@@ -1,0 +1,3 @@
+[submodule "designable"]
+	path = designable
+	url = git@github.com:pindjs/designable.git
