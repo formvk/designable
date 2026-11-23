@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "module": "ESNext",
+    "target": "ESNext",
+    "allowJs": false,
+    "noUnusedLocals": false,
+    "preserveConstEnums": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "declaration": true,
+    "noImplicitThis": false,
+    "noImplicitAny": false,
+    "strict": false,
+    "strictNullChecks": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "paths": {
+      "@formvk/designable-*": ["./packages/*/src"]
+    }
+  }
+}

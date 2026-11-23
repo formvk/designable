@@ -1,0 +1,58 @@
+{
+  "name": "formvk-designable",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix-dangerously",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "check": "pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm docs:build",
+    "preversion": "pnpm install --frozen-lockfile && pnpm build && pnpm exec oxlint && pnpm format:check && pnpm exec vitest run && pnpm docs:build",
+    "version:release": "lerna version",
+    "version:alpha": "lerna version --conventional-prerelease --preid alpha",
+    "version:beta": "lerna version --conventional-prerelease --preid beta",
+    "version:rc": "lerna version --conventional-prerelease --preid rc",
+    "version:exit-pre": "lerna version --conventional-graduate",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.60.1",
+    "@rollup/plugin-swc": "^0.4.1",
+    "@swc/core": "^1.16.22",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "happy-dom": "^21.0.4",
+    "husky": "^9.1.7",
+    "lerna": "^10.1.1",
+    "lint-staged": "^17.6.1",
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.94.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "vite-plugin-dts": "^5.1.2",
+    "vitepress": "^2.0.0-alpha.21",
+    "vitest": "^5.1.1"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}": [
+      "oxlint --fix-dangerously",
+      "oxfmt"
+    ],
+    "*.{json,jsonc,md,mdx,css,less,scss,html,yml,yaml}": [
+      "oxfmt"
+    ]
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@12.21.0"
+}
