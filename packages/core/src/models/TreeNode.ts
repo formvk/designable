@@ -34,9 +34,22 @@ export interface INodeFinder {
   (node: TreeNode): boolean
 }
 
+// 未归属工作空间的节点（资源节点、游离树）兜底索引
 const TreeNodes = new Map<string, TreeNode>()
 
 const CommonDesignerPropsMap = new Map<string, IDesignerControllerProps>()
+
+// 按节点实际归属的 operation 注册索引：工作空间内节点进 operation.nodes，
+// 资源节点等无 operation 的节点才进入全局表，避免不同工作空间同 id 互相覆盖
+function registerNode(node: TreeNode) {
+  const operation = node.root?.rootOperation
+  if (operation) {
+    TreeNodes.delete(node.id)
+    operation.nodes.set(node.id, node)
+  } else if (!TreeNodes.has(node.id)) {
+    TreeNodes.set(node.id, node)
+  }
+}
 
 const removeNode = (node: TreeNode) => {
   if (node.parent) {
@@ -61,24 +74,36 @@ const resetNodesParent = (nodes: TreeNode[], parent: TreeNode) => {
     resetNodesParent(node.children, node)
   }
 
+  const moveRegistration = (node: TreeNode, previousOperation?: Operation) => {
+    const operation = node.root?.rootOperation
+    if (previousOperation && previousOperation !== operation) {
+      previousOperation.nodes.delete(node.id)
+    }
+    registerNode(node)
+  }
+
   return nodes.map(node => {
     if (node === parent) return node
+    const previousOperation = node.root?.rootOperation
     if (!parent.isSourceNode) {
       if (node.isSourceNode) {
         node = node.clone(parent)
         resetDepth(node)
+        registerNode(node)
       } else if (!node.isRoot && node.isInOperation) {
         node.operation?.selection.remove(node)
         removeNode(node)
         shallowReset(node)
+        moveRegistration(node, previousOperation)
       } else {
         deepReset(node)
+        moveRegistration(node, previousOperation)
       }
     } else {
       deepReset(node)
+      moveRegistration(node, previousOperation)
     }
-    if (!TreeNodes.has(node.id)) {
-      TreeNodes.set(node.id, node)
+    if (!CommonDesignerPropsMap.has(node.componentName)) {
       CommonDesignerPropsMap.set(node.componentName, node.designerProps)
     }
     return node
@@ -126,13 +151,12 @@ export class TreeNode {
       this.parent = parent
       this.depth = parent.depth + 1
       this.root = parent.root
-      TreeNodes.set(this.id, this)
     } else {
       this.root = this
       this.rootOperation = node.operation
       this.isSelfSourceNode = node.isSourceNode || false
-      TreeNodes.set(this.id, this)
     }
+    registerNode(this)
     if (node) {
       this.from(node)
     }
@@ -426,6 +450,10 @@ export class TreeNode {
   findById(id?: string) {
     if (!id) return
     if (this.id === id) return this
+    const operation = this.root?.rootOperation
+    if (operation) {
+      return operation.nodes.get(id)
+    }
     if (this.children?.length > 0) {
       return TreeNodes.get(id)
     }
@@ -661,8 +689,10 @@ export class TreeNode {
         source: [],
       }),
       () => {
+        const operation = this.root?.rootOperation
         removeNode(this)
         TreeNodes.delete(this.id)
+        operation?.nodes.delete(this.id)
       }
     )
   }
@@ -702,9 +732,11 @@ export class TreeNode {
       }),
       () => {
         if (node.id && node.id !== this.id) {
+          const operation = this.root?.rootOperation
           TreeNodes.delete(this.id)
-          TreeNodes.set(node.id, this)
+          operation?.nodes.delete(this.id)
           this.id = node.id
+          registerNode(this)
         }
         if (node.componentName) {
           this.componentName = node.componentName
@@ -740,6 +772,7 @@ export class TreeNode {
     return new TreeNode(node, parent)
   }
 
+  // 仅查询未归属工作空间的节点（资源节点/游离树），工作空间内节点请通过 operation.nodes 查询
   static findById(id: string) {
     return TreeNodes.get(id)
   }

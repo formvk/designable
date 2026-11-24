@@ -16,7 +16,7 @@ export const useTranslateEffect = (engine: Engine) => {
         if (selectionElement) {
           const nodeId = selectionElement.getAttribute(engine.props.nodeSelectionIdAttrName as string)
           if (nodeId) {
-            const node = engine.findNodeById(nodeId)
+            const node = engine.findNodeById(nodeId, currentWorkspace)
             if (node) {
               helper.dragStart({ dragNodes: [node], type: 'translate' })
             }

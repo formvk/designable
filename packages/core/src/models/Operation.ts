@@ -23,6 +23,8 @@ export class Operation {
 
   tree: TreeNode
 
+  nodes = new Map<string, TreeNode>()
+
   selection: Selection
 
   hover: Hover

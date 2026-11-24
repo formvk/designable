@@ -151,4 +151,33 @@ describe('Engine', () => {
     expect(node).toBeInstanceOf(TreeNode)
     expect(engine.findNodeById(node.id)).toBe(node)
   })
+
+  it('按工作空间隔离节点索引，同 id 互不覆盖', () => {
+    const { engine, workspace } = createDesigner('w1')
+    const viewportElement = document.createElement('div')
+    document.body.appendChild(viewportElement)
+    const workspace2 = engine.workbench.addWorkspace({
+      id: 'w2',
+      title: '第二工作区',
+      description: '单元测试',
+      contentWindow: window,
+      viewportElement,
+    })!
+
+    const a = new TreeNode({ id: 'duplicate-id', componentName: 'Input', props: {} })
+    const b = new TreeNode({ id: 'duplicate-id', componentName: 'Input', props: {} })
+    workspace.operation.tree.append(a)
+    workspace2.operation.tree.append(b)
+
+    expect(engine.findNodeById('duplicate-id', workspace)).toBe(a)
+    expect(engine.findNodeById('duplicate-id', workspace2)).toBe(b)
+    expect(workspace.operation.tree.findById('duplicate-id')).toBe(a)
+    expect(workspace2.operation.tree.findById('duplicate-id')).toBe(b)
+    // 工作空间内节点不再写入全局表
+    expect(TreeNode.findById('duplicate-id')).toBeUndefined()
+
+    a.remove()
+    expect(engine.findNodeById('duplicate-id', workspace)).toBeUndefined()
+    expect(engine.findNodeById('duplicate-id', workspace2)).toBe(b)
+  })
 })

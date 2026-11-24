@@ -1,9 +1,9 @@
 import { DragStartEvent, DragMoveEvent, DragStopEvent } from '../events'
-import type { Engine } from '../models'
+import type { Engine, Workspace } from '../models'
 import { CursorDragType } from '../models'
 
 export const useResizeEffect = (engine: Engine) => {
-  const findStartNodeHandler = (target: HTMLElement) => {
+  const findStartNodeHandler = (target: HTMLElement, workspace: Workspace) => {
     const props = engine.props
     const handler = target?.closest(`*[${props.nodeResizeHandlerAttrName}]`)
     if (handler) {
@@ -13,7 +13,7 @@ export const useResizeEffect = (engine: Engine) => {
         if (element) {
           const nodeId = element.getAttribute(props.nodeSelectionIdAttrName)
           if (nodeId) {
-            const node = engine.findNodeById(nodeId)
+            const node = engine.findNodeById(nodeId, workspace)
             if (node) {
               return { direction, node, element }
             }
@@ -28,7 +28,7 @@ export const useResizeEffect = (engine: Engine) => {
     const target = event.data.target as HTMLElement
     const currentWorkspace = event.context?.workspace ?? engine.workbench.activeWorkspace
     if (!currentWorkspace) return
-    const handler = findStartNodeHandler(target)
+    const handler = findStartNodeHandler(target, currentWorkspace)
     const helper = currentWorkspace.operation.transformHelper
     if (handler) {
       const props = engine.props
@@ -36,7 +36,7 @@ export const useResizeEffect = (engine: Engine) => {
       if (selectionElement) {
         const nodeId = selectionElement.getAttribute(props.nodeSelectionIdAttrName)
         if (nodeId) {
-          const node = engine.findNodeById(nodeId)
+          const node = engine.findNodeById(nodeId, currentWorkspace)
           if (node) {
             helper.dragStart({
               dragNodes: [node],

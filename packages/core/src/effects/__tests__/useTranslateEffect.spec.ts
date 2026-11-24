@@ -78,14 +78,14 @@ describe('useTranslateEffect', () => {
   })
 
   it('拖拽平移手柄时按选中节点启动平移', () => {
-    const { engine, transformHelper, getHandler, dragStartEvent } = createEngine()
+    const { engine, workspace, transformHelper, getHandler, dragStartEvent } = createEngine()
     const node = { id: 'node-1' }
     engine.findNodeById.mockReturnValue(node)
     const { leaf } = createTranslateHandler({ 'data-node-selection-id': 'node-1' })
 
     getHandler(DragStartEvent)(dragStartEvent(leaf))
 
-    expect(engine.findNodeById).toHaveBeenCalledWith('node-1')
+    expect(engine.findNodeById).toHaveBeenCalledWith('node-1', workspace)
     expect(transformHelper.dragStart).toHaveBeenCalledWith({ dragNodes: [node], type: 'translate' })
   })
 

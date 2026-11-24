@@ -128,7 +128,7 @@ describe('useDragDropEffect DragStart', () => {
 
     getHandler(DragStartEvent)(dragStartEvent(createElement({ 'data-node-id': 'node-1' })))
 
-    expect(engine.findNodeById).toHaveBeenCalledWith('node-1')
+    expect(engine.findNodeById).toHaveBeenCalledWith('node-1', expect.any(Object))
     expect(moveHelper.dragStart).toHaveBeenCalledWith({ dragNodes: [node] })
     expect(engine.cursor.setStyle).toHaveBeenCalledWith('move')
   })
@@ -182,7 +182,7 @@ describe('useDragDropEffect DragStart', () => {
     document.body.appendChild(wrapper)
 
     handler(dragStartEvent(handlerElement))
-    expect(engine.findNodeById).toHaveBeenCalledWith('handler-1')
+    expect(engine.findNodeById).toHaveBeenCalledWith('handler-1', expect.any(Object))
     expect(moveHelper.dragStart).toHaveBeenCalledWith({ dragNodes: [handled] })
   })
 
@@ -193,7 +193,7 @@ describe('useDragDropEffect DragStart', () => {
 
     getHandler(DragStartEvent)(dragStartEvent(createElement({ 'data-source-id': 'source-1' })))
 
-    expect(engine.findNodeById).toHaveBeenCalledWith('source-1')
+    expect(engine.findNodeById).toHaveBeenCalledWith('source-1', expect.any(Object))
     expect(moveHelper.dragStart).toHaveBeenCalledWith({ dragNodes: [sourceNode] })
   })
 

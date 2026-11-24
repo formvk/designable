@@ -8,6 +8,7 @@ import { Screen, ScreenType } from './Screen'
 import type { ITreeNode } from './TreeNode'
 import { TreeNode } from './TreeNode'
 import { Workbench } from './Workbench'
+import type { Workspace } from './Workspace'
 
 /**
  * 设计器引擎
@@ -62,8 +63,8 @@ export class Engine extends Event {
     return results
   }
 
-  findNodeById(id: string) {
-    return TreeNode.findById(id)
+  findNodeById(id: string, workspace: Workspace | undefined = this.workbench.currentWorkspace) {
+    return workspace?.operation.nodes.get(id) ?? TreeNode.findById(id)
   }
 
   findMovingNodes(): TreeNode[] {

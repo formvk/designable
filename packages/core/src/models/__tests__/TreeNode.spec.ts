@@ -75,6 +75,7 @@ const createOperation = () => {
     },
     hover: { clear: vi.fn() },
     workspace: {},
+    nodes: new Map(),
   }
   const root = new TreeNode({ id: unique('opRoot'), componentName: 'TestNode', operation } as any)
   operation.tree = root

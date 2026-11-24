@@ -60,14 +60,14 @@ describe('useResizeEffect', () => {
   })
 
   it('拖拽缩放手柄时按选中节点启动缩放', () => {
-    const { engine, transformHelper, getHandler, createEvent } = createEngine()
+    const { engine, workspace, transformHelper, getHandler, createEvent } = createEngine()
     const node = { id: 'node-1' }
     engine.findNodeById.mockReturnValue(node)
     const { leaf } = createResizeHandler({ 'data-node-selection-id': 'node-1' })
 
     getHandler(DragStartEvent)(createEvent(DragStartEvent, leaf))
 
-    expect(engine.findNodeById).toHaveBeenCalledWith('node-1')
+    expect(engine.findNodeById).toHaveBeenCalledWith('node-1', workspace)
     expect(transformHelper.dragStart).toHaveBeenCalledWith({
       dragNodes: [node],
       type: 'resize',

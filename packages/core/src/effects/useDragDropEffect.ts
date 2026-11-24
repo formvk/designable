@@ -26,7 +26,7 @@ export const useDragDropEffect = (engine: Engine) => {
       const moveHelper = operation.moveHelper
       const id = nodeId || outlineId || handlerId
       if (id) {
-        const node = engine.findNodeById(id)
+        const node = engine.findNodeById(id, currentWorkspace)
         if (node) {
           if (!node.allowDrag()) return
           if (node === node.root) return
@@ -38,7 +38,7 @@ export const useDragDropEffect = (engine: Engine) => {
           }
         }
       } else if (sourceId) {
-        const sourceNode = engine.findNodeById(sourceId)
+        const sourceNode = engine.findNodeById(sourceId, currentWorkspace)
         if (sourceNode) {
           moveHelper.dragStart({ dragNodes: [sourceNode] })
         }
