@@ -1,32 +1,8 @@
-import { each, isPlainObj, globalThisPolyfill } from '@formvk/shared'
+export { lowerSnake, mergeLocales, getBrowserLanguage } from '@formvk/designable-i18n'
 
-export const lowerSnake = (str: string) => {
-  return String(str).replace(/\s+/g, '_').toLocaleLowerCase()
-}
-
-export const mergeLocales = (target: any, source: any) => {
-  if (isPlainObj(target) && isPlainObj(source)) {
-    each(source, function (value, key) {
-      const token = lowerSnake(key)
-      const messages = mergeLocales(target[key] || target[token], value)
-      target[token] = messages
-    })
-    return target
-  } else if (isPlainObj(source)) {
-    const result = Array.isArray(source) ? [] : {}
-    each(source, function (value, key) {
-      const messages = mergeLocales(undefined, value)
-      result[lowerSnake(key)] = messages
-    })
-    return result
-  }
-  return source
-}
-
-export const getBrowserLanguage = () => {
-  /* istanbul ignore next */
-  if (!globalThisPolyfill.navigator) {
-    return 'en'
-  }
-  return globalThisPolyfill.navigator['browserlanguage'] || globalThisPolyfill.navigator?.language || 'en'
+/**
+ * 统一的上报入口：异步事件回调与快捷键处理器中的 rejection 不应成为未处理异常。
+ */
+export const reportError = (error: unknown) => {
+  console.error(error)
 }

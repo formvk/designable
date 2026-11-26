@@ -1,8 +1,6 @@
 import { KeyCode } from '@formvk/designable-shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-// 先加载 registry 以固定模块求值顺序，避免 models 与 shortcuts 之间的循环依赖
-import '../../registry'
 import { MouseClickEvent } from '../../events/cursor/MouseClickEvent'
 import { CursorStatus } from '../../models/Cursor'
 import { useSelectionEffect } from '../useSelectionEffect'

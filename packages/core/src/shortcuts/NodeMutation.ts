@@ -1,4 +1,5 @@
-import { KeyCode, Shortcut, TreeNode } from '../models'
+import { KeyCode, Shortcut } from '../models/Shortcut'
+import { TreeNode } from '../models/TreeNode'
 
 /**
  * 快捷删除，快捷复制粘贴
@@ -6,10 +7,10 @@ import { KeyCode, Shortcut, TreeNode } from '../models'
 
 export const DeleteNodes = new Shortcut({
   codes: [[KeyCode.Backspace], [KeyCode.Delete]],
-  handler(context) {
+  async handler(context) {
     const operation = context.workspace?.operation
     if (operation) {
-      TreeNode.remove(operation.selection.selectedNodes)
+      await TreeNode.remove(operation.selection.selectedNodes)
     }
   },
 })
@@ -40,10 +41,10 @@ export const PasteNodes = new Shortcut({
     [KeyCode.Meta, KeyCode.V],
     [KeyCode.Control, KeyCode.V],
   ],
-  handler(context) {
+  async handler(context) {
     const operation = context.workspace?.operation
     if (operation) {
-      TreeNode.clone(Clipboard.nodes)
+      await TreeNode.clone(Clipboard.nodes)
     }
   },
 })

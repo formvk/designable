@@ -1,0 +1,133 @@
+.@{dr-prefix}-app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-family: var(--dr-font-family);
+  font-size: var(--dr-font-size);
+  color: var(--dr-text-1);
+  -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+  background-color: var(--dr-bg-canvas);
+}
+
+.@{dr-prefix}-app-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.@{dr-prefix}-app-absolute {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.@{dr-prefix}-app *,
+.@{dr-prefix}-app *::before,
+.@{dr-prefix}-app *::after {
+  box-sizing: border-box;
+}
+
+.@{dr-prefix}-app button {
+  font-family: inherit;
+}
+
+.@{dr-prefix}-app ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.@{dr-prefix}-app ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background: var(--dr-bg-fill-strong);
+  background-clip: padding-box;
+}
+
+.@{dr-prefix}-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--dr-text-4);
+  background-clip: padding-box;
+}
+
+.@{dr-prefix}-app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.@{dr-prefix}-designer,
+.@{dr-prefix}-workbench,
+.@{dr-prefix}-workspace {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.@{dr-prefix}-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  overflow: auto;
+  background-color: var(--dr-bg-canvas);
+  background-image: radial-gradient(var(--dr-canvas-dot) 1px, transparent 1px);
+  background-size: 16px 16px;
+  outline: none;
+}
+
+.@{dr-prefix}-component-tree {
+  min-height: 100%;
+}
+
+.@{dr-prefix}-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.6;
+}
+
+// ---------- 图标 ----------
+.@{dr-prefix}-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.@{dr-prefix}-icon > svg,
+.@{dr-prefix}-icon > img {
+  display: block;
+}
+
+// ---------- 空画布提示 ----------
+.@{dr-prefix}-empty-widget {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--dr-text-3);
+}
+
+.@{dr-prefix}-empty-widget-hints {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 18px;
+  border-radius: var(--dr-radius-md);
+  background: var(--dr-bg-fill);
+  font-size: 11px;
+  color: var(--dr-text-3);
+}
+
+[hidden] {
+  display: none !important;
+}

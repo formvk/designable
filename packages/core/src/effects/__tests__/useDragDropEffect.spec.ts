@@ -1,14 +1,13 @@
 import { Point } from '@formvk/designable-shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// 先加载 registry 以固定模块求值顺序，避免 models 与 shortcuts 之间的循环依赖
-import '../../registry'
 import { DragMoveEvent } from '../../events/cursor/DragMoveEvent'
 import { DragStartEvent } from '../../events/cursor/DragStartEvent'
 import { DragStopEvent } from '../../events/cursor/DragStopEvent'
 import { ViewportScrollEvent } from '../../events/viewport/ViewportScrollEvent'
 import { CursorDragType, CursorType } from '../../models/Cursor'
 import { ClosestPosition } from '../../models/MoveHelper'
+import { DESIGNER_PIPELINES } from '../../models/Pipeline'
 import { useDragDropEffect } from '../useDragDropEffect'
 
 const createNode = (overrides: any = {}) => {
@@ -31,6 +30,8 @@ const createNode = (overrides: any = {}) => {
   }
   return node
 }
+
+const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
 const createElement = (attrs: Record<string, string>) => {
   const element = document.createElement('div')
@@ -74,6 +75,7 @@ const createHarness = () => {
       setStyle: vi.fn(),
     },
     workbench: {
+      workspaces: [workspace],
       eachWorkspace: vi.fn((visitor: (workspace: any) => void) => visitor(workspace)),
       activeWorkspace: workspace,
     },
@@ -375,7 +377,7 @@ describe('useDragDropEffect DragStop', () => {
     expect(engine.cursor.setStyle).toHaveBeenCalledWith('')
   })
 
-  it('After/Under 方向允许同级插入时过滤不可放置节点', () => {
+  it('After/Under 方向允许同级插入时过滤不可放置节点', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     const parent = createNode({ id: 'parent' })
     const closestNode = createNode({ id: 'closest', parent })
@@ -387,16 +389,18 @@ describe('useDragDropEffect DragStop', () => {
 
     moveHelper.closestDirection = ClosestPosition.After
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.insertAfter).toHaveBeenCalledWith(droppable)
     expect(selection.batchSafeSelect).toHaveBeenCalledWith(['after'])
 
     moveHelper.closestDirection = ClosestPosition.Under
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.insertAfter).toHaveBeenCalledTimes(2)
     expect(moveHelper.dragEnd).toHaveBeenCalledTimes(2)
   })
 
-  it('After 方向不允许同级插入时跳过选择', () => {
+  it('After 方向不允许同级插入时跳过选择', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     const closestNode = createNode({ id: 'closest', allowSibling: () => false })
     moveHelper.dragNodes = [createNode()]
@@ -404,13 +408,14 @@ describe('useDragDropEffect DragStop', () => {
     moveHelper.closestDirection = ClosestPosition.After
 
     getHandler(DragStopEvent)(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
 
     expect(closestNode.insertAfter).not.toHaveBeenCalled()
     expect(selection.batchSafeSelect).not.toHaveBeenCalled()
     expect(moveHelper.dragEnd).toHaveBeenCalled()
   })
 
-  it('Before/Upper 方向插入到前面', () => {
+  it('Before/Upper 方向插入到前面', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     const closestNode = createNode({ id: 'closest' })
     const dragNode = createNode({ id: 'drag' })
@@ -420,15 +425,17 @@ describe('useDragDropEffect DragStop', () => {
 
     moveHelper.closestDirection = ClosestPosition.Before
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.insertBefore).toHaveBeenCalledWith(dragNode)
 
     moveHelper.closestDirection = ClosestPosition.Upper
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.insertBefore).toHaveBeenCalledTimes(2)
     expect(selection.batchSafeSelect).toHaveBeenCalledWith(['before'])
   })
 
-  it('Inner/InnerAfter 方向追加子节点并派发拖放事件', () => {
+  it('Inner/InnerAfter 方向追加子节点并派发拖放事件', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     const closestNode = createNode({ id: 'closest' })
     const dragNode = createNode({ id: 'drag' })
@@ -438,18 +445,20 @@ describe('useDragDropEffect DragStop', () => {
 
     moveHelper.closestDirection = ClosestPosition.Inner
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.append).toHaveBeenCalledWith(dragNode)
     expect(selection.batchSafeSelect).toHaveBeenCalledWith(['append'])
     expect(moveHelper.dragDrop).toHaveBeenCalledWith({ dropNode: closestNode })
 
     moveHelper.closestDirection = ClosestPosition.InnerAfter
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.append).toHaveBeenCalledTimes(2)
     expect(moveHelper.dragDrop).toHaveBeenCalledTimes(2)
     expect(moveHelper.dragEnd).toHaveBeenCalledTimes(2)
   })
 
-  it('InnerBefore 方向插入到最前面', () => {
+  it('InnerBefore 方向插入到最前面', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     const closestNode = createNode({ id: 'closest' })
     moveHelper.dragNodes = [createNode()]
@@ -457,6 +466,7 @@ describe('useDragDropEffect DragStop', () => {
     moveHelper.closestDirection = ClosestPosition.InnerBefore
 
     getHandler(DragStopEvent)(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
 
     expect(closestNode.prepend).toHaveBeenCalled()
     expect(selection.batchSafeSelect).toHaveBeenCalledWith(['prepend'])
@@ -464,7 +474,7 @@ describe('useDragDropEffect DragStop', () => {
     expect(moveHelper.dragEnd).toHaveBeenCalled()
   })
 
-  it('Inner 方向不允许追加时跳过', () => {
+  it('Inner 方向不允许追加时跳过', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     const closestNode = createNode({ id: 'closest', allowAppend: () => false })
     moveHelper.dragNodes = [createNode()]
@@ -472,6 +482,7 @@ describe('useDragDropEffect DragStop', () => {
     moveHelper.closestDirection = ClosestPosition.Inner
 
     getHandler(DragStopEvent)(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
 
     expect(closestNode.append).not.toHaveBeenCalled()
     expect(selection.batchSafeSelect).not.toHaveBeenCalled()
@@ -479,20 +490,22 @@ describe('useDragDropEffect DragStop', () => {
     expect(moveHelper.dragEnd).toHaveBeenCalled()
   })
 
-  it('缺少最近节点或方向时仅结束拖拽', () => {
+  it('缺少最近节点或方向时仅结束拖拽', async () => {
     const { moveHelper, selection, getHandler } = createHarness()
     moveHelper.dragNodes = [createNode()]
     const handler = getHandler(DragStopEvent)
 
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     moveHelper.closestDirection = ClosestPosition.Inner
     handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
 
     expect(selection.batchSafeSelect).not.toHaveBeenCalled()
     expect(moveHelper.dragEnd).toHaveBeenCalledTimes(2)
   })
 
-  it('资源节点在过滤时展开子节点，自定义 getDropNodes 可替换结果', () => {
+  it('资源节点在过滤时展开子节点，自定义 getDropNodes 可替换结果', async () => {
     const { moveHelper, getHandler } = createHarness()
     const childA = createNode({ id: 'child-a' })
     const childB = createNode({ id: 'child-b' })
@@ -516,8 +529,73 @@ describe('useDragDropEffect DragStop', () => {
     moveHelper.closestDirection = ClosestPosition.After
 
     getHandler(DragStopEvent)(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
     expect(closestNode.insertAfter).toHaveBeenCalledWith(childA, childB, replacement, cloned)
     expect(clonedSource.clone).toHaveBeenCalledWith(clonedSource.parent)
     expect(moveHelper.dragEnd).toHaveBeenCalled()
+  })
+
+  it('通过 drag.drop 管道分发落点，异常时仍结束拖拽并重置光标', async () => {
+    const { engine, moveHelper, selection, getHandler } = createHarness()
+    const closestNode = createNode({ id: 'closest' })
+    const dragNode = createNode({ id: 'drag' })
+    moveHelper.dragNodes = [dragNode]
+    moveHelper.closestNode = closestNode
+    moveHelper.closestDirection = ClosestPosition.Inner
+    const error = new Error('middleware error')
+    const run = vi.fn(() => {
+      throw error
+    })
+    engine.pipeline = { run }
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const handler = getHandler(DragStopEvent)
+
+    handler(new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 }))
+    await flush()
+
+    expect(run).toHaveBeenCalledWith(
+      DESIGNER_PIPELINES.dragDrop,
+      expect.objectContaining({ node: closestNode, direction: ClosestPosition.Inner, dragNodes: [dragNode] }),
+      expect.any(Function)
+    )
+    expect(consoleError).toHaveBeenCalledWith(error)
+    expect(selection.batchSafeSelect).not.toHaveBeenCalled()
+    expect(moveHelper.dragEnd).toHaveBeenCalled()
+    expect(engine.cursor.setStyle).toHaveBeenCalledWith('')
+    consoleError.mockRestore()
+  })
+
+  it('DragStop 落点处理在途时重复触发会被忽略，完成后恢复响应', async () => {
+    const { engine, moveHelper, getHandler } = createHarness()
+    const closestNode = createNode({ id: 'closest' })
+    moveHelper.dragNodes = [createNode({ id: 'drag' })]
+    moveHelper.closestNode = closestNode
+    moveHelper.closestDirection = ClosestPosition.Inner
+    let releaseRun: () => void = () => {}
+    const gate = new Promise<void>(resolve => {
+      releaseRun = resolve
+    })
+    const run = vi.fn(() => gate)
+    engine.pipeline = { run }
+    const stopEvent = () => new DragStopEvent({ target: document.body, clientX: 0, clientY: 0, pageX: 0, pageY: 0 })
+    const handler = getHandler(DragStopEvent)
+
+    handler(stopEvent())
+    await flush()
+    handler(stopEvent())
+    await flush()
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(moveHelper.dragEnd).not.toHaveBeenCalled()
+
+    releaseRun()
+    await flush()
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(moveHelper.dragEnd).toHaveBeenCalledTimes(1)
+    expect(engine.cursor.setStyle).toHaveBeenLastCalledWith('')
+
+    // 在途任务释放后，新的 DragStop 可以再次进入管道
+    handler(stopEvent())
+    await flush()
+    expect(run).toHaveBeenCalledTimes(2)
   })
 })

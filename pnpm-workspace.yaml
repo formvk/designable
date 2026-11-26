@@ -1,8 +1,13 @@
 packages:
   - 'packages/**'
+  - 'examples/**'
 allowBuilds:
   esbuild: true
   nx: true
   '@swc/core': true
 minimumReleaseAgeExclude:
   - vite@8.3.8
+overrides:
+  # reactive-react 声明的 reactive 版本范围低于仓库实际使用的版本，
+  # 响应式依赖图必须单例，否则 Tracker 无法追踪跨实例的响应式状态
+  '@formvk/reactive': 1.2.0-beta.4

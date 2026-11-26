@@ -1,4 +1,6 @@
 export * from './Engine'
+export * from './Pipeline'
+export * from './Registry'
 export * from './Screen'
 export * from './Cursor'
 export * from './Operation'

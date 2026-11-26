@@ -3,19 +3,19 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDesigner } from '../../__tests__/helpers'
 import { TreeNode } from '../TreeNode'
 
-const createSelectionFixture = () => {
+const createSelectionFixture = async () => {
   const { engine, workspace } = createDesigner()
   const tree = workspace.operation.tree
   const a = new TreeNode({ componentName: 'A', props: {} })
   const b = new TreeNode({ componentName: 'B', props: {} })
   const c = new TreeNode({ componentName: 'C', props: {} })
-  tree.append(a, b, c)
+  await tree.append(a, b, c)
   return { engine, workspace, tree, a, b, c, selection: workspace.operation.selection }
 }
 
 describe('Selection', () => {
-  it('select / add / remove / clear 维护选中状态', () => {
-    const { a, b, selection } = createSelectionFixture()
+  it('select / add / remove / clear 维护选中状态', async () => {
+    const { a, b, selection } = await createSelectionFixture()
 
     selection.select(a)
     expect(selection.selected).toEqual([a.id])
@@ -41,8 +41,8 @@ describe('Selection', () => {
     expect(selection.selectedNodes).toEqual([])
   })
 
-  it('batchSelect 批量选中并同步 indexes', () => {
-    const { a, b, c, selection } = createSelectionFixture()
+  it('batchSelect 批量选中并同步 indexes', async () => {
+    const { a, b, c, selection } = await createSelectionFixture()
 
     selection.batchSelect([a, b, c])
 
@@ -51,8 +51,8 @@ describe('Selection', () => {
     expect(selection.selectedNodes).toEqual([a, b, c])
   })
 
-  it('safeSelect / batchSafeSelect 忽略空值', () => {
-    const { a, selection } = createSelectionFixture()
+  it('safeSelect / batchSafeSelect 忽略空值', async () => {
+    const { a, selection } = await createSelectionFixture()
 
     selection.select(a)
     selection.safeSelect(undefined as any)
@@ -61,8 +61,8 @@ describe('Selection', () => {
     expect(selection.selected).toEqual([a.id])
   })
 
-  it('支持按 id 选中', () => {
-    const { tree, a, selection } = createSelectionFixture()
+  it('支持按 id 选中', async () => {
+    const { tree, a, selection } = await createSelectionFixture()
 
     selection.select(tree.id)
     expect(selection.selected).toEqual([tree.id])
@@ -72,8 +72,8 @@ describe('Selection', () => {
     expect(selection.selected).toEqual([a.id])
   })
 
-  it('重复选中同一节点仍会触发选中事件', () => {
-    const { workspace, a, selection } = createSelectionFixture()
+  it('重复选中同一节点仍会触发选中事件', async () => {
+    const { workspace, a, selection } = await createSelectionFixture()
     const dispatch = vi.spyOn(workspace.operation, 'dispatch')
 
     selection.select(a)
@@ -84,8 +84,8 @@ describe('Selection', () => {
     expect(dispatch).toHaveBeenCalledTimes(1)
   })
 
-  it('crossAddTo 选中区间节点，重复调用则移除', () => {
-    const { a, b, c, selection } = createSelectionFixture()
+  it('crossAddTo 选中区间节点，重复调用则移除', async () => {
+    const { a, b, c, selection } = await createSelectionFixture()
 
     selection.select(a)
     selection.crossAddTo(c)
@@ -99,8 +99,8 @@ describe('Selection', () => {
     expect(selection.has(orphan)).toBe(false)
   })
 
-  it('engine.getAllSelectedNodes 汇总所有工作区的选中节点', () => {
-    const { engine, a, selection } = createSelectionFixture()
+  it('engine.getAllSelectedNodes 汇总所有工作区的选中节点', async () => {
+    const { engine, a, selection } = await createSelectionFixture()
 
     selection.select(a)
 

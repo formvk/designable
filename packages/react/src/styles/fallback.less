@@ -1,0 +1,63 @@
+// 极简原生回退控件的默认皮肤，仅在引入可选主题时生效。
+
+.@{dr-prefix}-raw-button {
+  height: 22px;
+  min-width: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  color: var(--dr-text-2);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  &:hover {
+    background: var(--dr-bg-hover);
+    color: var(--dr-text-1);
+  }
+}
+
+.@{dr-prefix}-raw-input {
+  border-color: var(--dr-border);
+  border-radius: var(--dr-radius-sm);
+  background: var(--dr-bg-surface);
+  color: var(--dr-text-1);
+
+  &::placeholder {
+    color: var(--dr-text-4);
+  }
+
+  &:focus {
+    border-color: var(--dr-color-primary);
+    box-shadow: 0 0 0 2px var(--dr-color-primary-soft);
+  }
+}
+
+.@{dr-prefix}-empty-state {
+  color: var(--dr-text-3);
+}
+
+.@{dr-prefix}-empty-state-title {
+  color: var(--dr-text-2);
+}
+
+.@{dr-prefix}-empty-state-desc {
+  color: var(--dr-text-3);
+}
+
+.@{dr-prefix}-empty-widget-hints {
+  padding: 12px 18px;
+  border-radius: var(--dr-radius-md);
+  background: var(--dr-bg-fill);
+  color: var(--dr-text-3);
+}
+
+.@{dr-prefix}-app kbd {
+  border-color: var(--dr-border-strong);
+  background: var(--dr-bg-surface);
+  color: var(--dr-text-2);
+}

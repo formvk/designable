@@ -3,6 +3,8 @@ import { action, shallow, shallowRef } from '@formvk/reactive'
 import { AddWorkspaceEvent, RemoveWorkspaceEvent, SwitchWorkspaceEvent } from '../events'
 import type { IEngineContext, WorkbenchTypes } from '../types'
 import type { Engine } from './Engine'
+import { DESIGNER_PIPELINES } from './Pipeline'
+import type { IWorkbenchContext, MaybePromise } from './Pipeline'
 import type { IWorkspaceProps } from './Workspace'
 import { Workspace } from './Workspace'
 export class Workbench {
@@ -16,11 +18,23 @@ export class Workbench {
 
   @shallowRef accessor type: WorkbenchTypes = 'DESIGNABLE'
 
+  /**
+   * 工作台动作串行队列：switchWorkspace / setWorkbenchType 按调用顺序落地，
+   * 避免慢中间件在途时并发切换造成 currentWorkspace / type 乱序。
+   */
+  private actionTail: Promise<unknown> = Promise.resolve()
+
   constructor(engine: Engine) {
     this.engine = engine
     this.workspaces = []
     this.currentWorkspace = undefined
     this.activeWorkspace = undefined
+  }
+
+  private enqueueAction<T>(task: () => MaybePromise<T>): Promise<T> {
+    const result = this.actionTail.then(task, task)
+    this.actionTail = result.catch(() => {})
+    return result
   }
 
   getEventContext(): IEngineContext {
@@ -31,8 +45,32 @@ export class Workbench {
   }
 
   @action
-  switchWorkspace(id: string) {
-    const finded = this.findWorkspaceById(id)
+  switchWorkspace(id: string): Promise<Workspace | undefined> {
+    return this.enqueueAction(() => this.executeSwitchWorkspace(id))
+  }
+
+  private async executeSwitchWorkspace(id: string): Promise<Workspace | undefined> {
+    const pipeline = this.engine?.pipeline
+    if (pipeline) {
+      const context: IWorkbenchContext = {
+        engine: this.engine,
+        workbench: this,
+        action: 'switch',
+        from: this.currentWorkspace,
+        id,
+        to: id,
+      }
+      await pipeline.run(DESIGNER_PIPELINES.workbench, context, () => {
+        this.applyWorkspaceSwitch(context.to ?? id)
+      })
+    } else {
+      this.applyWorkspaceSwitch(id)
+    }
+    return this.currentWorkspace
+  }
+
+  private applyWorkspaceSwitch(target: string | Workspace) {
+    const finded = typeof target === 'string' ? this.findWorkspaceById(target) : target
     if (finded) {
       this.currentWorkspace = finded
       this.engine.dispatch(new SwitchWorkspaceEvent(finded))
@@ -47,7 +85,25 @@ export class Workbench {
   }
 
   @action
-  setWorkbenchType(type: WorkbenchTypes) {
+  setWorkbenchType(type: WorkbenchTypes): Promise<void> {
+    return this.enqueueAction(() => this.executeSetWorkbenchType(type))
+  }
+
+  private async executeSetWorkbenchType(type: WorkbenchTypes): Promise<void> {
+    const pipeline = this.engine?.pipeline
+    if (pipeline) {
+      const context: IWorkbenchContext = {
+        engine: this.engine,
+        workbench: this,
+        action: 'type',
+        from: this.currentWorkspace,
+        type,
+      }
+      await pipeline.run(DESIGNER_PIPELINES.workbench, context, () => {
+        this.type = context.type ?? type
+      })
+      return
+    }
     this.type = type
   }
 

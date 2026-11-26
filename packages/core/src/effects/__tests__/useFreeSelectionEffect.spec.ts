@@ -1,8 +1,6 @@
 import { Rect } from '@formvk/designable-shared'
 import { describe, expect, it, vi } from 'vitest'
 
-// 先加载 registry 以固定模块求值顺序，避免 models 与 shortcuts 之间的循环依赖
-import '../../registry'
 import { DragStopEvent } from '../../events/cursor/DragStopEvent'
 import { CursorDragType, CursorType } from '../../models/Cursor'
 import { useFreeSelectionEffect } from '../useFreeSelectionEffect'
@@ -21,7 +19,10 @@ const createHarness = () => {
     isPointInViewport: vi.fn(() => true),
     getValidNodeOffsetRect: vi.fn((node: any) => rects.get(node)),
   }
-  const workspace: any = { operation: { tree, selection }, viewport }
+  const workspace: any = {
+    operation: { tree, selection, moveHelper: { hasDragNodes: false } },
+    viewport,
+  }
   const handlers = new Map<any, (event: any) => void>()
   const cursor: any = {
     type: CursorType.Normal,
@@ -43,7 +44,7 @@ const createHarness = () => {
   const stop = () =>
     getHandler(DragStopEvent)(new DragStopEvent({ target: null, clientX: 100, clientY: 100, pageX: 100, pageY: 100 }))
   const getHandler = (type: any) => handlers.get(type) as (event: any) => void
-  return { engine, cursor, tree, selection, viewport, nodes, rects, stop }
+  return { engine, cursor, tree, selection, viewport, workspace, nodes, rects, stop }
 }
 
 describe('useFreeSelectionEffect', () => {
@@ -89,7 +90,30 @@ describe('useFreeSelectionEffect', () => {
     expect(cursor.setType).not.toHaveBeenCalled()
   })
 
-  it('非框选类型时只选择节点不重置类型', () => {
+  it('拖拽节点时跳过框选，选中由落点逻辑接管', () => {
+    const { selection, nodes, rects, workspace, stop } = createHarness()
+    const node: any = { id: 'node', isMyParents: () => false }
+    nodes.push(node)
+    rects.set(node, new Rect(10, 10, 20, 20))
+    workspace.operation.moveHelper.hasDragNodes = true
+
+    stop()
+
+    expect(selection.batchSafeSelect).not.toHaveBeenCalled()
+  })
+
+  it('拖拽节点且处于框选类型时仍重置光标类型', () => {
+    const { cursor, selection, workspace, stop } = createHarness()
+    workspace.operation.moveHelper.hasDragNodes = true
+    cursor.type = CursorType.Selection
+
+    stop()
+
+    expect(selection.batchSafeSelect).not.toHaveBeenCalled()
+    expect(cursor.setType).toHaveBeenCalledWith(CursorType.Normal)
+  })
+
+  it('普通模式下空白拖拽仍框选，但不重置光标类型', () => {
     const { selection, nodes, rects, cursor, stop } = createHarness()
     const node: any = { id: 'node', isMyParents: () => false }
     nodes.push(node)

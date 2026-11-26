@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 
-// 先加载 registry 以固定模块求值顺序，避免 models 与 shortcuts 之间的循环依赖
-import '../../registry'
 import { createDesigner } from '../../__tests__/helpers'
 import { HistoryGotoEvent, HistoryPushEvent, HistoryRedoEvent, HistoryUndoEvent } from '../../events'
 
@@ -60,12 +58,12 @@ describe('Workspace', () => {
     expect(detachEvents).toHaveBeenCalledWith(container)
   })
 
-  it('serialize / from 双向同步工作区数据', () => {
+  it('serialize / from 双向同步工作区数据', async () => {
     const { workspace } = createDesigner('w1')
     workspace.title = '标题'
     workspace.description = '描述'
 
-    const data = workspace.serialize()
+    const data = await workspace.serialize()
 
     expect(data.id).toBe('w1')
     expect(data.title).toBe('标题')
@@ -73,34 +71,36 @@ describe('Workspace', () => {
     expect(data.operation?.selected).toEqual([workspace.operation.tree.id])
 
     const { workspace: target } = createDesigner('w2')
-    target.from(data)
+    await target.from(data)
 
     expect(target.id).toBe('w1')
     expect(target.title).toBe('标题')
     expect(target.description).toBe('描述')
     expect(target.operation.selection.selected).toEqual([workspace.operation.tree.id])
 
-    target.from(undefined)
+    await target.from(undefined)
     expect(target.id).toBe('w1')
+
+    expect(workspace.serializeSync()).toMatchObject({ id: 'w1', title: '标题', description: '描述' })
   })
 
-  it('历史回调派发对应事件并清理 hover', () => {
+  it('历史回调派发对应事件并清理 hover', async () => {
     const { workspace } = createDesigner()
     const dispatch = vi.spyOn(workspace.operation, 'dispatch')
     const clear = vi.spyOn(workspace.operation.hover, 'clear')
 
-    workspace.history.push('custom')
+    await workspace.history.push('custom')
     expect(dispatch).toHaveBeenCalledWith(expect.any(HistoryPushEvent))
 
-    workspace.history.undo()
+    await workspace.history.undo()
     expect(clear).toHaveBeenCalledTimes(1)
     expect(dispatch).toHaveBeenCalledWith(expect.any(HistoryUndoEvent))
 
-    workspace.history.redo()
+    await workspace.history.redo()
     expect(clear).toHaveBeenCalledTimes(2)
     expect(dispatch).toHaveBeenCalledWith(expect.any(HistoryRedoEvent))
 
-    workspace.history.goTo(0)
+    await workspace.history.goTo(0)
     expect(clear).toHaveBeenCalledTimes(3)
     expect(dispatch).toHaveBeenCalledWith(expect.any(HistoryGotoEvent))
   })

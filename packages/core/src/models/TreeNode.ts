@@ -15,9 +15,16 @@ import {
   FromNodeEvent,
 } from '../events'
 import { mergeLocales } from '../internals'
-import { GlobalRegistry } from '../registry'
 import type { IDesignerControllerProps, IDesignerProps, IDesignerLocales } from '../types'
 import type { Operation } from './Operation'
+import { DESIGNER_PIPELINES } from './Pipeline'
+import type {
+  ICommandContext,
+  IDeserializeContext,
+  INodeMutationContext,
+  ISerializeContext,
+  MaybePromise,
+} from './Pipeline'
 
 export interface ITreeNode {
   componentName: string
@@ -57,7 +64,7 @@ const removeNode = (node: TreeNode) => {
   }
 }
 
-const resetNodesParent = (nodes: TreeNode[], parent: TreeNode) => {
+const resetNodesParent = async (nodes: TreeNode[], parent: TreeNode): Promise<TreeNode[]> => {
   const resetDepth = (node: TreeNode) => {
     node.depth = node.parent ? node.parent.depth + 1 : 0
     node.children.forEach(resetDepth)
@@ -69,9 +76,9 @@ const resetNodesParent = (nodes: TreeNode[], parent: TreeNode) => {
     resetDepth(node)
   }
 
-  const deepReset = (node: TreeNode) => {
+  const deepReset = async (node: TreeNode) => {
     shallowReset(node)
-    resetNodesParent(node.children, node)
+    await resetNodesParent(node.children, node)
   }
 
   const moveRegistration = (node: TreeNode, previousOperation?: Operation) => {
@@ -82,12 +89,17 @@ const resetNodesParent = (nodes: TreeNode[], parent: TreeNode) => {
     registerNode(node)
   }
 
-  return nodes.map(node => {
-    if (node === parent) return node
+  const results: TreeNode[] = []
+  // 顺序 await，保证来源节点克隆后的顺序与传入一致
+  for (let node of nodes) {
+    if (node === parent) {
+      results.push(node)
+      continue
+    }
     const previousOperation = node.root?.rootOperation
     if (!parent.isSourceNode) {
       if (node.isSourceNode) {
-        node = node.clone(parent)
+        node = await node.clone(parent)
         resetDepth(node)
         registerNode(node)
       } else if (!node.isRoot && node.isInOperation) {
@@ -96,22 +108,24 @@ const resetNodesParent = (nodes: TreeNode[], parent: TreeNode) => {
         shallowReset(node)
         moveRegistration(node, previousOperation)
       } else {
-        deepReset(node)
+        await deepReset(node)
         moveRegistration(node, previousOperation)
       }
     } else {
-      deepReset(node)
+      await deepReset(node)
       moveRegistration(node, previousOperation)
     }
     if (!CommonDesignerPropsMap.has(node.componentName)) {
       CommonDesignerPropsMap.set(node.componentName, node.designerProps)
     }
-    return node
-  })
+    results.push(node)
+  }
+  return results
 }
 
-const resetParent = (node: TreeNode, parent: TreeNode) => {
-  return resetNodesParent([node], parent)[0]
+const resetParent = async (node: TreeNode, parent: TreeNode) => {
+  const [result] = await resetNodesParent([node], parent)
+  return result
 }
 
 const resolveDesignerProps = (node: TreeNode, props: IDesignerControllerProps) => {
@@ -158,13 +172,14 @@ export class TreeNode {
     }
     registerNode(this)
     if (node) {
-      this.from(node)
+      // 构造阶段同步填充数据，不派发事件、不经过中间件
+      this.applyNode(node)
     }
   }
 
   @computed
   get designerProps(): IDesignerProps {
-    const behaviors = GlobalRegistry.getDesignerBehaviors(this)
+    const behaviors = this.operation?.engine.registry.getDesignerBehaviors(this) ?? []
     const designerProps: IDesignerProps = behaviors.reduce((buf, pattern) => {
       if (!pattern.designerProps) return buf
       Object.assign(buf, resolveDesignerProps(this, pattern.designerProps))
@@ -175,7 +190,7 @@ export class TreeNode {
 
   @computed
   get designerLocales(): IDesignerLocales {
-    const behaviors = GlobalRegistry.getDesignerBehaviors(this)
+    const behaviors = this.operation?.engine.registry.getDesignerBehaviors(this) ?? []
     const designerLocales: IDesignerLocales = behaviors.reduce((buf, pattern) => {
       if (!pattern.designerLocales) return buf
       mergeLocales(buf, pattern.designerLocales)
@@ -303,7 +318,7 @@ export class TreeNode {
   }
 
   getMessage(token: string) {
-    return GlobalRegistry.getDesignerMessage(token, this.designerLocales)
+    return this.operation?.engine.registry.getDesignerMessage(token, this.designerLocales)
   }
 
   isMyAncestor(node: TreeNode) {
@@ -332,15 +347,56 @@ export class TreeNode {
     this.operation?.snapshot(type)
   }
 
-  triggerMutation<T>(event: any, callback?: () => T, defaults?: T): T {
-    if (this.operation) {
-      const result = (this.operation.dispatch(event, callback) as T) || defaults
+  triggerMutation<T>(event: any, callback?: () => MaybePromise<T>, defaults?: T): Promise<T> {
+    const operation = this.operation
+    if (operation) {
+      // 所有工作区内变更进入 Operation 互斥队列，保证历史恢复在途时不会并发改写树
+      return operation.runMutation(() => this.executeMutation(event, callback, defaults))
+    }
+    if (isFn(callback)) {
+      return Promise.resolve(callback() as MaybePromise<T>)
+    }
+    return Promise.resolve(defaults as T)
+  }
+
+  private async executeMutation<T>(event: any, callback?: () => MaybePromise<T>, defaults?: T): Promise<T> {
+    const operation = this.operation
+    if (operation) {
+      const pipeline = operation.engine?.pipeline
+      if (pipeline && operation.tree === this.root) {
+        let executed = false
+        const context: INodeMutationContext<T> = {
+          engine: operation.engine,
+          workspace: operation.workspace,
+          operation,
+          node: this,
+          event,
+        }
+        const result = await pipeline.run(DESIGNER_PIPELINES.nodeMutation, context, async () => {
+          executed = true
+          context.result = (await operation.dispatch(event, callback)) as T
+          return context.result
+        })
+        if (executed) {
+          this.takeSnapshot(event?.type)
+        }
+        const value = context.result !== undefined ? context.result : result
+        return (value ?? defaults) as T
+      }
+      const result = ((await operation.dispatch(event, callback)) as T) ?? defaults
       this.takeSnapshot(event?.type)
       return result as T
     } else if (isFn(callback)) {
-      return callback()
+      return (await callback()) as T
     }
     return defaults as T
+  }
+
+  private resolveMutationNodes(event: any, fallback: TreeNode[]): TreeNode[] {
+    const source = event?.data?.source
+    if (Array.isArray(source)) return source
+    if (source instanceof TreeNode) return [source]
+    return fallback
   }
 
   find(finder: INodeFinder): TreeNode | undefined {
@@ -485,7 +541,7 @@ export class TreeNode {
     }
   }
 
-  resetNodesParent(nodes: TreeNode[], parent: TreeNode) {
+  async resetNodesParent(nodes: TreeNode[], parent: TreeNode) {
     return resetNodesParent(
       nodes.filter(node => node !== this),
       parent
@@ -493,7 +549,7 @@ export class TreeNode {
   }
 
   @action
-  setProps(props?: any) {
+  async setProps(props?: any) {
     return this.triggerMutation(
       new UpdateNodePropsEvent({
         target: this,
@@ -511,47 +567,47 @@ export class TreeNode {
   }
 
   @action
-  prepend(...nodes: TreeNode[]) {
+  async prepend(...nodes: TreeNode[]) {
+    if (!nodes.length) return []
     if (nodes.some(node => node.contains(this))) return []
-    const originSourceParents = nodes.map(node => node.parent)
-    const newNodes = this.resetNodesParent(nodes, this)
-    if (!newNodes.length) return []
-    return this.triggerMutation(
-      new PrependNodeEvent({
-        originSourceParents,
-        target: this,
-        source: newNodes,
-      }),
-      () => {
-        this.children = newNodes.concat(this.children)
-        return newNodes
-      },
-      []
-    )
+    const event = new PrependNodeEvent({
+      originSourceParents: nodes.map(node => node.parent),
+      target: this,
+      source: nodes,
+    })
+    return this.triggerMutation(event, async () => {
+      const sourceNodes = this.resolveMutationNodes(event, nodes)
+      event.data.originSourceParents = sourceNodes.map(node => node.parent)
+      const newNodes = await this.resetNodesParent(sourceNodes, this)
+      event.data.source = newNodes
+      if (!newNodes.length) return []
+      this.children = newNodes.concat(this.children)
+      return newNodes
+    }, [])
   }
 
   @action
-  append(...nodes: TreeNode[]) {
+  async append(...nodes: TreeNode[]) {
+    if (!nodes.length) return []
     if (nodes.some(node => node.contains(this))) return []
-    const originSourceParents = nodes.map(node => node.parent)
-    const newNodes = this.resetNodesParent(nodes, this)
-    if (!newNodes.length) return []
-    return this.triggerMutation(
-      new AppendNodeEvent({
-        originSourceParents,
-        target: this,
-        source: newNodes,
-      }),
-      () => {
-        this.children = this.children.concat(newNodes)
-        return newNodes
-      },
-      []
-    )
+    const event = new AppendNodeEvent({
+      originSourceParents: nodes.map(node => node.parent),
+      target: this,
+      source: nodes,
+    })
+    return this.triggerMutation(event, async () => {
+      const sourceNodes = this.resolveMutationNodes(event, nodes)
+      event.data.originSourceParents = sourceNodes.map(node => node.parent)
+      const newNodes = await this.resetNodesParent(sourceNodes, this)
+      event.data.source = newNodes
+      if (!newNodes.length) return []
+      this.children = this.children.concat(newNodes)
+      return newNodes
+    }, [])
   }
 
   @action
-  wrap(wrapper: TreeNode) {
+  async wrap(wrapper: TreeNode) {
     if (wrapper === this) return
     const parent = this.parent
     return this.triggerMutation(
@@ -559,118 +615,117 @@ export class TreeNode {
         target: this,
         source: wrapper,
       }),
-      () => {
-        resetParent(this, wrapper)
-        resetParent(wrapper, parent)
+      async () => {
+        await resetParent(this, wrapper)
+        await resetParent(wrapper, parent)
         return wrapper
       }
     )
   }
 
   @action
-  insertAfter(...nodes: TreeNode[]) {
+  async insertAfter(...nodes: TreeNode[]) {
     const parent = this.parent
+    if (!nodes.length) return []
     if (nodes.some(node => node.contains(this))) return []
     if (parent?.children?.length) {
-      const originSourceParents = nodes.map(node => node.parent)
-      const newNodes = this.resetNodesParent(nodes, parent)
-      if (!newNodes.length) return []
+      const event = new InsertAfterEvent({
+        originSourceParents: nodes.map(node => node.parent),
+        target: this,
+        source: nodes,
+      })
 
-      return this.triggerMutation(
-        new InsertAfterEvent({
-          originSourceParents,
-          target: this,
-          source: newNodes,
-        }),
-        () => {
-          parent.children = parent.children.reduce<TreeNode[]>((buf, node) => {
-            if (node === this) {
-              return buf.concat([node]).concat(newNodes)
-            } else {
-              return buf.concat([node])
-            }
-          }, [])
-          return newNodes
-        },
-        []
-      )
+      return this.triggerMutation(event, async () => {
+        const sourceNodes = this.resolveMutationNodes(event, nodes)
+        event.data.originSourceParents = sourceNodes.map(node => node.parent)
+        const newNodes = await this.resetNodesParent(sourceNodes, parent)
+        event.data.source = newNodes
+        if (!newNodes.length) return []
+        parent.children = parent.children.reduce<TreeNode[]>((buf, node) => {
+          if (node === this) {
+            return buf.concat([node]).concat(newNodes)
+          } else {
+            return buf.concat([node])
+          }
+        }, [])
+        return newNodes
+      }, [])
     }
     return []
   }
 
   @action
-  insertBefore(...nodes: TreeNode[]) {
+  async insertBefore(...nodes: TreeNode[]) {
     const parent = this.parent
+    if (!nodes.length) return []
     if (nodes.some(node => node.contains(this))) return []
     if (parent?.children?.length) {
-      const originSourceParents = nodes.map(node => node.parent)
-      const newNodes = this.resetNodesParent(nodes, parent)
-      if (!newNodes.length) return []
-      return this.triggerMutation(
-        new InsertBeforeEvent({
-          originSourceParents,
-          target: this,
-          source: newNodes,
-        }),
-        () => {
-          parent.children = parent.children.reduce<TreeNode[]>((buf, node) => {
-            if (node === this) {
-              return buf.concat(newNodes).concat([node])
-            } else {
-              return buf.concat([node])
-            }
-          }, [])
-          return newNodes
-        },
-        []
-      )
+      const event = new InsertBeforeEvent({
+        originSourceParents: nodes.map(node => node.parent),
+        target: this,
+        source: nodes,
+      })
+      return this.triggerMutation(event, async () => {
+        const sourceNodes = this.resolveMutationNodes(event, nodes)
+        event.data.originSourceParents = sourceNodes.map(node => node.parent)
+        const newNodes = await this.resetNodesParent(sourceNodes, parent)
+        event.data.source = newNodes
+        if (!newNodes.length) return []
+        parent.children = parent.children.reduce<TreeNode[]>((buf, node) => {
+          if (node === this) {
+            return buf.concat(newNodes).concat([node])
+          } else {
+            return buf.concat([node])
+          }
+        }, [])
+        return newNodes
+      }, [])
     }
     return []
   }
 
-  insertChildren(start: number, ...nodes: TreeNode[]) {
+  async insertChildren(start: number, ...nodes: TreeNode[]) {
+    if (!nodes.length) return []
     if (nodes.some(node => node.contains(this))) return []
     if (this.children?.length) {
-      const originSourceParents = nodes.map(node => node.parent)
-      const newNodes = this.resetNodesParent(nodes, this)
-      if (!newNodes.length) return []
-      return this.triggerMutation(
-        new InsertChildrenEvent({
-          originSourceParents,
-          target: this,
-          source: newNodes,
-        }),
-        () => {
-          this.children = this.children.reduce<TreeNode[]>((buf, node, index) => {
-            if (index === start) {
-              return buf.concat(newNodes).concat([node])
-            }
-            return buf.concat([node])
-          }, [])
-          return newNodes
-        },
-        []
-      )
+      const event = new InsertChildrenEvent({
+        originSourceParents: nodes.map(node => node.parent),
+        target: this,
+        source: nodes,
+      })
+      return this.triggerMutation(event, async () => {
+        const sourceNodes = this.resolveMutationNodes(event, nodes)
+        event.data.originSourceParents = sourceNodes.map(node => node.parent)
+        const newNodes = await this.resetNodesParent(sourceNodes, this)
+        event.data.source = newNodes
+        if (!newNodes.length) return []
+        this.children = this.children.reduce<TreeNode[]>((buf, node, index) => {
+          if (index === start) {
+            return buf.concat(newNodes).concat([node])
+          }
+          return buf.concat([node])
+        }, [])
+        return newNodes
+      }, [])
     }
     return []
   }
 
   @action
-  setChildren(...nodes: TreeNode[]) {
-    const originSourceParents = nodes.map(node => node.parent)
-    const newNodes = this.resetNodesParent(nodes, this)
-    return this.triggerMutation(
-      new UpdateChildrenEvent({
-        originSourceParents,
-        target: this,
-        source: newNodes,
-      }),
-      () => {
-        this.children = newNodes
-        return newNodes
-      },
-      []
-    )
+  async setChildren(...nodes: TreeNode[]) {
+    const event = new UpdateChildrenEvent({
+      originSourceParents: nodes.map(node => node.parent),
+      target: this,
+      source: nodes,
+    })
+    return this.triggerMutation(event, async () => {
+      const sourceNodes = this.resolveMutationNodes(event, nodes)
+      event.data.originSourceParents = sourceNodes.map(node => node.parent)
+      const newNodes = await this.resetNodesParent(sourceNodes, this)
+      event.data.source = newNodes
+      this.children = newNodes
+      return newNodes
+    }, [])
   }
 
   /**
@@ -682,7 +737,7 @@ export class TreeNode {
   }
 
   @action
-  remove() {
+  async remove() {
     return this.triggerMutation(
       new RemoveNodeEvent({
         target: this,
@@ -697,7 +752,7 @@ export class TreeNode {
     )
   }
 
-  clone(parent?: TreeNode) {
+  async clone(parent?: TreeNode) {
     const newNode = new TreeNode(
       {
         id: uid(),
@@ -708,12 +763,12 @@ export class TreeNode {
       },
       parent ? parent : this.parent
     )
-    newNode.children = resetNodesParent(
-      this.children.map(child => {
-        return child.clone(newNode)
-      }),
-      newNode
-    )
+    const clonedChildren: TreeNode[] = []
+    // 顺序克隆，避免异步 clone 时子节点顺序错乱
+    for (const child of this.children) {
+      clonedChildren.push(await child.clone(newNode))
+    }
+    newNode.children = await resetNodesParent(clonedChildren, newNode)
     return this.triggerMutation(
       new CloneNodeEvent({
         target: this,
@@ -723,39 +778,102 @@ export class TreeNode {
     )
   }
 
-  from(node?: ITreeNode) {
-    if (!node) return
+  from(node?: ITreeNode): Promise<void> {
+    if (!node) return Promise.resolve()
+    const operation = this.operation
+    const pipeline = operation?.engine?.pipeline
+    if (operation && pipeline && operation.tree === this) {
+      // 整个反序列化管道（含中间件异步间隙）纳入变更互斥队列，
+      // 保证历史恢复在途时外部变更只能排队，不能并发改写树
+      return operation.runMutation(() => this.executeFrom(node)).then(() => undefined)
+    }
     return this.triggerMutation(
       new FromNodeEvent({
         target: this,
         source: node,
       }),
       () => {
-        if (node.id && node.id !== this.id) {
-          const operation = this.root?.rootOperation
-          TreeNodes.delete(this.id)
-          operation?.nodes.delete(this.id)
-          this.id = node.id
-          registerNode(this)
-        }
-        if (node.componentName) {
-          this.componentName = node.componentName
-        }
-        this.props = node.props ?? {}
-        if (node.hidden) {
-          this.hidden = node.hidden
-        }
-        if (node.children) {
-          this.children =
-            node.children?.map?.(node => {
-              return new TreeNode(node, this)
-            }) || []
-        }
+        this.applyNode(node)
       }
-    )
+    ).then(() => undefined)
   }
 
-  serialize(): ITreeNode {
+  private executeFrom(node: ITreeNode) {
+    const operation = this.operation
+    if (!operation) return
+    const context: IDeserializeContext = {
+      engine: operation.engine,
+      workspace: operation.workspace,
+      operation,
+      node: this,
+      source: node,
+    }
+    return operation.engine?.pipeline?.run(DESIGNER_PIPELINES.deserialize, context, () => {
+      const source = context.source ?? node
+      // 已在互斥任务内，直接执行变更逻辑，避免重复入队造成自等待
+      return this.executeMutation(
+        new FromNodeEvent({
+          target: this,
+          source,
+        }),
+        () => {
+          this.applyNode(source)
+        }
+      )
+    })
+  }
+
+  private applyNode(node?: ITreeNode) {
+    if (!node) return
+    if (node.id && node.id !== this.id) {
+      const operation = this.root?.rootOperation
+      TreeNodes.delete(this.id)
+      operation?.nodes.delete(this.id)
+      this.id = node.id
+      registerNode(this)
+    }
+    if (node.componentName) {
+      this.componentName = node.componentName
+    }
+    this.props = node.props ?? {}
+    if (node.hidden) {
+      this.hidden = node.hidden
+    }
+    if (node.children) {
+      this.children =
+        node.children?.map?.(node => {
+          return new TreeNode(node, this)
+        }) || []
+    }
+  }
+
+  async serialize(): Promise<ITreeNode> {
+    const operation = this.operation
+    const pipeline = operation?.engine?.pipeline
+    if (pipeline && operation.tree === this) {
+      const context: ISerializeContext<ITreeNode> = {
+        engine: operation.engine,
+        workspace: operation.workspace,
+        operation,
+        node: this,
+      }
+      const result = await pipeline.run(DESIGNER_PIPELINES.serialize, context, () => {
+        context.result = context.node.serializeNode()
+        return context.result
+      })
+      return context.result ?? result ?? this.serializeNode()
+    }
+    return this.serializeNode()
+  }
+
+  /**
+   * 同步序列化：绕过 serialize 管道，仅用于无法 await 的同步边界（如 History 初始快照、JSON 展示）。
+   */
+  serializeSync(): ITreeNode {
+    return this.serializeNode()
+  }
+
+  private serializeNode(): ITreeNode {
     return {
       id: this.id,
       componentName: this.componentName,
@@ -763,7 +881,7 @@ export class TreeNode {
       props: toJS(this.props),
       hidden: this.hidden,
       children: this.children.map(treeNode => {
-        return treeNode.serialize()
+        return treeNode.serializeNode()
       }),
     }
   }
@@ -777,17 +895,32 @@ export class TreeNode {
     return TreeNodes.get(id)
   }
 
-  static remove(nodes: TreeNode[] = []) {
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const node = nodes[i]
-      if (node.allowDelete()) {
-        const previous = node.previous
-        const next = node.next
-        node.remove()
-        node.operation?.selection.select(previous ? previous : next ? next : node.parent)
-        node.operation?.hover.clear()
+  static async remove(nodes: TreeNode[] = []) {
+    if (!nodes.length) return
+    const engine = nodes.find(node => !!node.operation)?.operation?.engine
+    const pipeline = engine?.pipeline
+    const apply = async (targets: TreeNode[]) => {
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const node = targets[i]
+        if (node.allowDelete()) {
+          const previous = node.previous
+          const next = node.next
+          await node.remove()
+          node.operation?.selection.select(previous ? previous : next ? next : node.parent)
+          node.operation?.hover.clear()
+        }
       }
     }
+    if (engine && pipeline) {
+      const context: ICommandContext = {
+        engine,
+        action: 'remove',
+        nodes,
+      }
+      await pipeline.run(DESIGNER_PIPELINES.command, context, () => apply(context.nodes ?? nodes))
+      return
+    }
+    await apply(nodes)
   }
 
   static sort(nodes: TreeNode[] = []) {
@@ -797,57 +930,74 @@ export class TreeNode {
     })
   }
 
-  static clone(nodes: TreeNode[] = []) {
-    const groups: { [parentId: string]: TreeNode[] } = {}
-    const lastGroupNode: { [parentId: string]: TreeNode } = {}
-    const filterNestedNode = TreeNode.sort(nodes).filter(node => {
-      return !nodes.some(parent => {
-        return node.isMyParents(parent)
+  static async clone(nodes: TreeNode[] = []) {
+    if (!nodes.length) return
+    const engine = nodes.find(node => !!node.operation)?.operation?.engine
+    const pipeline = engine?.pipeline
+    const apply = async (targets: TreeNode[]) => {
+      const groups: { [parentId: string]: TreeNode[] } = {}
+      const lastGroupNode: { [parentId: string]: TreeNode } = {}
+      const filterNestedNode = TreeNode.sort(targets).filter(node => {
+        return !targets.some(parent => {
+          return node.isMyParents(parent)
+        })
       })
-    })
-    each(filterNestedNode, node => {
-      if (node === node.root) return
-      if (!node.allowClone()) return
-      if (!node?.operation) return
-      groups[node?.parent?.id] = groups[node?.parent?.id] || []
-      groups[node?.parent?.id].push(node)
-      if (lastGroupNode[node?.parent?.id]) {
-        if (node.index > lastGroupNode[node?.parent?.id].index) {
+      each(filterNestedNode, node => {
+        if (node === node.root) return
+        if (!node.allowClone()) return
+        if (!node?.operation) return
+        groups[node?.parent?.id] = groups[node?.parent?.id] || []
+        groups[node?.parent?.id].push(node)
+        if (lastGroupNode[node?.parent?.id]) {
+          if (node.index > lastGroupNode[node?.parent?.id].index) {
+            lastGroupNode[node?.parent?.id] = node
+          }
+        } else {
           lastGroupNode[node?.parent?.id] = node
         }
-      } else {
-        lastGroupNode[node?.parent?.id] = node
-      }
-    })
-    const parents = new Map<TreeNode, TreeNode[]>()
-    each(groups, (nodes, parentId) => {
-      const lastNode = lastGroupNode[parentId]
-      let insertPoint = lastNode
-      each(nodes, node => {
-        const cloned = node.clone()
-        if (!cloned) return
-        if (node.operation?.selection.has(node) && insertPoint.parent.allowAppend([cloned])) {
-          insertPoint.insertAfter(cloned)
-          insertPoint = insertPoint.next
-        } else if (node.operation?.selection.length === 1) {
-          const targetNode = node.operation?.tree.findById(node.operation?.selection.first)
-          if (targetNode) {
-            let cloneNodes = parents.get(targetNode)
-            if (!cloneNodes) {
-              cloneNodes = []
-              parents.set(targetNode, cloneNodes)
-            }
-            if (targetNode.allowAppend([cloned])) {
-              cloneNodes.push(cloned)
+      })
+      const parents = new Map<TreeNode, TreeNode[]>()
+      for (const parentId of Object.keys(groups)) {
+        const groupNodes = groups[parentId]
+        const lastNode = lastGroupNode[parentId]
+        let insertPoint = lastNode
+        for (const node of groupNodes) {
+          const cloned = await node.clone()
+          if (!cloned) continue
+          if (node.operation?.selection.has(node) && insertPoint.parent.allowAppend([cloned])) {
+            await insertPoint.insertAfter(cloned)
+            // 插入是异步的，必须在 await 之后重新读取下一个兄弟节点
+            insertPoint = insertPoint.next
+          } else if (node.operation?.selection.length === 1) {
+            const targetNode = node.operation?.tree.findById(node.operation?.selection.first)
+            if (targetNode) {
+              let cloneNodes = parents.get(targetNode)
+              if (!cloneNodes) {
+                cloneNodes = []
+                parents.set(targetNode, cloneNodes)
+              }
+              if (targetNode.allowAppend([cloned])) {
+                cloneNodes.push(cloned)
+              }
             }
           }
         }
-      })
-    })
-    parents.forEach((nodes, target) => {
-      if (!nodes.length) return
-      target.append(...nodes)
-    })
+      }
+      for (const [target, groupNodes] of parents) {
+        if (!groupNodes.length) continue
+        await target.append(...groupNodes)
+      }
+    }
+    if (engine && pipeline) {
+      const context: ICommandContext = {
+        engine,
+        action: 'clone',
+        nodes,
+      }
+      await pipeline.run(DESIGNER_PIPELINES.command, context, () => apply(context.nodes ?? nodes))
+      return
+    }
+    await apply(nodes)
   }
 
   static filterResizable(nodes: TreeNode[] = []) {
@@ -882,16 +1032,24 @@ export class TreeNode {
     }, [])
   }
 
-  static filterDroppable(nodes: TreeNode[] = [], parent: TreeNode) {
-    return nodes.reduce<TreeNode[]>((buf, node) => {
-      if (!node.allowDrop(parent)) return buf
+  static async filterDroppable(nodes: TreeNode[] = [], parent: TreeNode) {
+    const results: TreeNode[] = []
+    for (const node of nodes) {
+      if (!node.allowDrop(parent)) continue
       if (isFn(node.designerProps?.getDropNodes)) {
-        const cloned = node.isSourceNode ? node.clone(node.parent) : node
+        const cloned = node.isSourceNode ? await node.clone(node.parent) : node
         const transformed = node.designerProps.getDropNodes(cloned, parent)
-        return transformed ? buf.concat(transformed) : buf
+        if (transformed) {
+          results.push(...(Array.isArray(transformed) ? transformed : [transformed]))
+        }
+        continue
       }
-      if (node.componentName === '$$ResourceNode$$') return buf.concat(node.children)
-      return buf.concat([node])
-    }, [])
+      if (node.componentName === '$$ResourceNode$$') {
+        results.push(...node.children)
+        continue
+      }
+      results.push(node)
+    }
+    return results
   }
 }

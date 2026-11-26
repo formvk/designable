@@ -4,6 +4,8 @@ import { globalThisPolyfill, uid } from '@formvk/shared'
 import type { IEngineProps } from '../types'
 import { Cursor } from './Cursor'
 import { Keyboard } from './Keyboard'
+import { Pipeline } from './Pipeline'
+import { Registry } from './Registry'
 import { Screen, ScreenType } from './Screen'
 import type { ITreeNode } from './TreeNode'
 import { TreeNode } from './TreeNode'
@@ -27,12 +29,23 @@ export class Engine extends Event {
 
   screen: Screen
 
+  registry: Registry
+
+  pipeline: Pipeline
+
   constructor(props: Partial<IEngineProps<Engine>>) {
     super(props)
+    this.pipeline = new Pipeline()
     this.props = {
       ...Engine.defaultProps,
       ...props,
     }
+    this.registry = new Registry({
+      language: this.props.language,
+      fallbackLanguage: this.props.fallbackLanguage,
+      locales: this.props.locales,
+      icons: this.props.icons,
+    })
     this.init()
     this.id = uid()
   }
@@ -44,9 +57,9 @@ export class Engine extends Event {
     this.keyboard = new Keyboard(this)
   }
 
-  setCurrentTree(tree?: ITreeNode) {
+  async setCurrentTree(tree?: ITreeNode) {
     if (this.workbench.currentWorkspace) {
-      this.workbench.currentWorkspace.operation.tree.from(tree)
+      await this.workbench.currentWorkspace.operation.tree.from(tree)
     }
   }
 

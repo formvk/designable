@@ -19,6 +19,10 @@ export type IEngineProps<T = Event> = IEventProps<T> & {
   defaultComponentTree?: ITreeNode //默认组件树
   defaultScreenType: ScreenType
   rootComponentName: string
+  language?: string //设计器语言
+  fallbackLanguage?: string //回退语言
+  locales?: IDesignerLocales //设计器内置文案
+  icons?: IDesignerIcons //设计器内置图标
 }
 
 export type IEngineContext = {

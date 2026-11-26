@@ -1,10 +1,14 @@
 import { Point } from '@formvk/designable-shared'
 
 import { DragStartEvent, DragMoveEvent, DragStopEvent, ViewportScrollEvent } from '../events'
-import type { Engine } from '../models'
-import { ClosestPosition, CursorType, CursorDragType, TreeNode } from '../models'
+import { reportError } from '../internals'
+import type { Engine, IDragDropContext } from '../models'
+import { ClosestPosition, CursorType, CursorDragType, DESIGNER_PIPELINES, TreeNode } from '../models'
 
 export const useDragDropEffect = (engine: Engine) => {
+  // 落点处理是异步的，首个 DragStop 完成前忽略重复事件，避免同一批 dragNodes 被重复插入
+  let dropping = false
+
   engine.subscribeTo(DragStartEvent, event => {
     if (engine.cursor.type !== CursorType.Normal) return
     const target = event.data.target as HTMLElement
@@ -111,41 +115,68 @@ export const useDragDropEffect = (engine: Engine) => {
   engine.subscribeTo(DragStopEvent, () => {
     if (engine.cursor.type !== CursorType.Normal) return
     if (engine.cursor.dragType !== CursorDragType.Move) return
-    engine.workbench.eachWorkspace(currentWorkspace => {
-      const operation = currentWorkspace.operation
-      const moveHelper = operation.moveHelper
-      const dragNodes = moveHelper.dragNodes
-      const closestNode = moveHelper.closestNode
-      const closestDirection = moveHelper.closestDirection
-      const selection = operation.selection
-      if (!dragNodes.length) return
-      if (dragNodes.length && closestNode && closestDirection) {
-        if (closestDirection === ClosestPosition.After || closestDirection === ClosestPosition.Under) {
-          if (closestNode.allowSibling(dragNodes)) {
-            selection.batchSafeSelect(
-              closestNode.insertAfter(...TreeNode.filterDroppable(dragNodes, closestNode.parent))
-            )
+    if (dropping) return
+    dropping = true
+    void (async () => {
+      try {
+        for (const currentWorkspace of engine.workbench.workspaces) {
+          const operation = currentWorkspace.operation
+          const moveHelper = operation.moveHelper
+          const dragNodes = moveHelper.dragNodes
+          if (!dragNodes.length) continue
+          const selection = operation.selection
+          const drop = async (context: IDragDropContext) => {
+            const closestNode = context.node
+            const closestDirection = context.direction
+            if (!(context.dragNodes.length && closestNode && closestDirection)) return
+            if (closestDirection === ClosestPosition.After || closestDirection === ClosestPosition.Under) {
+              if (closestNode.allowSibling(context.dragNodes)) {
+                const droppableNodes = await TreeNode.filterDroppable(context.dragNodes, closestNode.parent)
+                selection.batchSafeSelect(await closestNode.insertAfter(...droppableNodes))
+              }
+            } else if (closestDirection === ClosestPosition.Before || closestDirection === ClosestPosition.Upper) {
+              if (closestNode.allowSibling(context.dragNodes)) {
+                const droppableNodes = await TreeNode.filterDroppable(context.dragNodes, closestNode.parent)
+                selection.batchSafeSelect(await closestNode.insertBefore(...droppableNodes))
+              }
+            } else if (closestDirection === ClosestPosition.Inner || closestDirection === ClosestPosition.InnerAfter) {
+              if (closestNode.allowAppend(context.dragNodes)) {
+                const droppableNodes = await TreeNode.filterDroppable(context.dragNodes, closestNode)
+                selection.batchSafeSelect(await closestNode.append(...droppableNodes))
+                moveHelper.dragDrop({ dropNode: closestNode })
+              }
+            } else if (closestDirection === ClosestPosition.InnerBefore) {
+              if (closestNode.allowAppend(context.dragNodes)) {
+                const droppableNodes = await TreeNode.filterDroppable(context.dragNodes, closestNode)
+                selection.batchSafeSelect(await closestNode.prepend(...droppableNodes))
+                moveHelper.dragDrop({ dropNode: closestNode })
+              }
+            }
           }
-        } else if (closestDirection === ClosestPosition.Before || closestDirection === ClosestPosition.Upper) {
-          if (closestNode.allowSibling(dragNodes)) {
-            selection.batchSafeSelect(
-              closestNode.insertBefore(...TreeNode.filterDroppable(dragNodes, closestNode.parent))
-            )
+          const context: IDragDropContext = {
+            engine,
+            workspace: currentWorkspace,
+            dragNodes,
+            node: moveHelper.closestNode,
+            direction: moveHelper.closestDirection,
           }
-        } else if (closestDirection === ClosestPosition.Inner || closestDirection === ClosestPosition.InnerAfter) {
-          if (closestNode.allowAppend(dragNodes)) {
-            selection.batchSafeSelect(closestNode.append(...TreeNode.filterDroppable(dragNodes, closestNode)))
-            moveHelper.dragDrop({ dropNode: closestNode })
-          }
-        } else if (closestDirection === ClosestPosition.InnerBefore) {
-          if (closestNode.allowAppend(dragNodes)) {
-            selection.batchSafeSelect(closestNode.prepend(...TreeNode.filterDroppable(dragNodes, closestNode)))
-            moveHelper.dragDrop({ dropNode: closestNode })
+          try {
+            if (engine.pipeline) {
+              await engine.pipeline.run(DESIGNER_PIPELINES.dragDrop, context, () => drop(context))
+            } else {
+              await drop(context)
+            }
+          } finally {
+            moveHelper.dragEnd()
           }
         }
+      } finally {
+        engine.cursor.setStyle('')
       }
-      moveHelper.dragEnd()
-    })
-    engine.cursor.setStyle('')
+    })()
+      .catch(reportError)
+      .finally(() => {
+        dropping = false
+      })
   })
 }

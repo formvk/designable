@@ -25,6 +25,34 @@ describe('Cursor', () => {
     expect(cursor.status).toBe(CursorStatus.Dragging)
     expect(cursor.type).toBe(CursorType.Selection)
     expect(cursor.dragType).toBe(CursorDragType.Resize)
+
+    cursor.setStatus(CursorStatus.Normal)
+  })
+
+  it('拖拽期间禁用文本选择并清除已有选择，回到 Normal 后恢复', () => {
+    const { engine, workspaces } = createEngine()
+    const removeAllRanges = vi.fn()
+    const contentRoot = { style: {} as any }
+    workspaces.push({
+      viewport: {
+        contentWindow: {
+          document: { documentElement: contentRoot },
+          getSelection: () => ({ removeAllRanges }),
+        },
+      },
+    })
+    const cursor = new Cursor(engine)
+
+    cursor.setStatus(CursorStatus.DragStart)
+
+    expect(document.documentElement.style.userSelect).toBe('none')
+    expect(contentRoot.style.userSelect).toBe('none')
+    expect(removeAllRanges).toHaveBeenCalled()
+
+    cursor.setStatus(CursorStatus.Normal)
+
+    expect(document.documentElement.style.userSelect).toBe('')
+    expect(contentRoot.style.userSelect).toBe('')
   })
 
   it('setStyle 同步光标到画布与当前文档根节点', () => {

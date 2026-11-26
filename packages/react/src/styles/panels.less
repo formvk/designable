@@ -1,0 +1,253 @@
+// ==================== 主面板 ====================
+.@{dr-prefix}-main-panel-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dr-bg-canvas);
+}
+
+.@{dr-prefix}-main-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 54px;
+  padding: 0 16px;
+  background: var(--dr-bg-glass);
+  border-bottom: 1px solid var(--dr-border);
+  -webkit-backdrop-filter: var(--dr-blur);
+  backdrop-filter: var(--dr-blur);
+}
+
+.@{dr-prefix}-main-panel-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dr-text-1);
+}
+
+.@{dr-prefix}-main-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.@{dr-prefix}-main-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+// ==================== 复合面板 ====================
+.@{dr-prefix}-composite-panel {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+.@{dr-prefix}-composite-panel-right {
+  flex-direction: row-reverse;
+}
+
+.@{dr-prefix}-composite-panel-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 56px;
+  padding: 10px 0;
+  background: var(--dr-bg-surface-2);
+  border-right: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-composite-panel-right .@{dr-prefix}-composite-panel-nav {
+  border-right: none;
+  border-left: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-composite-panel-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 44px;
+  min-height: 44px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: var(--dr-radius-md);
+  background: transparent;
+  color: var(--dr-text-3);
+  font-size: 10px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+
+  &:hover {
+    background: var(--dr-bg-hover);
+    color: var(--dr-text-1);
+  }
+}
+
+.@{dr-prefix}-composite-panel-nav-item-active {
+  background: var(--dr-color-primary-soft);
+  color: var(--dr-color-primary);
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.08);
+}
+
+.@{dr-prefix}-composite-panel-nav-icon {
+  display: inline-flex;
+  align-items: center;
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+.@{dr-prefix}-composite-panel-nav-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.@{dr-prefix}-composite-panel-tabs-content {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 280px;
+  min-height: 0;
+  background: var(--dr-bg-surface);
+  border-right: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-composite-panel-tabs-content-pinning {
+  box-shadow: none;
+}
+
+.@{dr-prefix}-composite-panel-right .@{dr-prefix}-composite-panel-tabs-content {
+  border-right: none;
+  border-left: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-composite-panel-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-composite-panel-tabs-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dr-text-1);
+}
+
+.@{dr-prefix}-composite-panel-tabs-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.@{dr-prefix}-composite-panel-tabs-header-extra {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.@{dr-prefix}-composite-panel-tabs-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+// ==================== 工作区面板 ====================
+.@{dr-prefix}-workspace-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+  background: var(--dr-bg-canvas);
+}
+
+.@{dr-prefix}-workspace-panel-item {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+// ==================== 工具条 ====================
+.@{dr-prefix}-toolbar-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 8px;
+  height: 46px;
+  padding: 0 10px;
+  border: 1px solid var(--dr-border);
+  border-radius: var(--dr-radius-md);
+  background: var(--dr-bg-glass);
+  box-shadow: var(--dr-shadow-1);
+  -webkit-backdrop-filter: var(--dr-blur);
+  backdrop-filter: var(--dr-blur);
+}
+
+// ==================== 设置面板 ====================
+.@{dr-prefix}-settings-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 296px;
+  min-height: 0;
+  background: var(--dr-bg-surface);
+  border-left: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 12px 0 14px;
+  border-bottom: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-settings-panel-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dr-text-1);
+}
+
+.@{dr-prefix}-settings-panel-header-extra {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.@{dr-prefix}-settings-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}

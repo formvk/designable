@@ -22,13 +22,17 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      // 直接指向源码，测试无需先构建 shared
+      // 直接指向源码，测试无需先构建 workspace 包
       '@formvk/designable-shared': new URL('./packages/shared/src/index.ts', import.meta.url).pathname,
+      '@formvk/designable-core': new URL('./packages/core/src/index.ts', import.meta.url).pathname,
+      '@formvk/designable-i18n': new URL('./packages/i18n/src/index.ts', import.meta.url).pathname,
+      '@formvk/designable-react-icons': new URL('./packages/react-icons/src/index.ts', import.meta.url).pathname,
+      '@formvk/designable-react': new URL('./packages/react/src/index.ts', import.meta.url).pathname,
     },
   },
   test: {
     environment: 'happy-dom',
-    include: ['packages/*/src/**/*.{test,spec}.ts'],
+    include: ['packages/*/src/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
   },
 })

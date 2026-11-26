@@ -74,6 +74,10 @@ export class Workspace {
     })
     this.operation = new Operation(this)
     this.history = new History(this, {
+      engine: this.engine,
+      cancelSnapshot: () => {
+        this.operation.cancelSnapshot()
+      },
       onPush: item => {
         this.operation.dispatch(new HistoryPushEvent(item))
       },
@@ -113,19 +117,28 @@ export class Workspace {
     return this.engine.dispatch(event, this.getEventContext())
   }
 
-  serialize(): IWorkspace {
+  async serialize(): Promise<IWorkspace> {
     return {
       id: this.id,
       title: this.title,
       description: this.description,
-      operation: this.operation.serialize(),
+      operation: await this.operation.serialize(),
     }
   }
 
-  from(workspace?: IWorkspace) {
+  serializeSync(): IWorkspace {
+    return {
+      id: this.id,
+      title: this.title,
+      description: this.description,
+      operation: this.operation.serializeSync(),
+    }
+  }
+
+  async from(workspace?: IWorkspace) {
     if (!workspace) return
     if (workspace.operation) {
-      this.operation.from(workspace.operation)
+      await this.operation.from(workspace.operation)
     }
     if (workspace.id) {
       this.id = workspace.id

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-// 先加载 registry 以固定模块求值顺序，避免 externals -> presets -> shortcuts 的循环依赖
-import '../registry'
 import {
   createBehavior,
   createDesigner,

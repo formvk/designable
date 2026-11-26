@@ -16,11 +16,11 @@ describe('Operation', () => {
     expect(operation.hover.node).toBeUndefined()
   })
 
-  it('hover 设置与清除节点', () => {
+  it('hover 设置与清除节点', async () => {
     const { workspace } = createDesigner()
     const { operation } = workspace
     const input = new TreeNode({ componentName: 'Input', props: {} })
-    operation.tree.append(input)
+    await operation.tree.append(input)
 
     operation.hover.setHover(input)
     expect(operation.hover.node).toBe(input)
@@ -54,20 +54,57 @@ describe('Operation', () => {
     expect(history.history[history.history.length - 1].type).toBe('second')
   })
 
-  it('serialize 与 from 完成操作快照往返', () => {
+  it('serialize 与 from 完成操作快照往返', async () => {
     const { workspace } = createDesigner()
     const input = new TreeNode({ componentName: 'Input', props: { label: '用户名' } })
-    workspace.operation.tree.append(input)
+    await workspace.operation.tree.append(input)
 
-    const snapshot = workspace.operation.serialize()
+    const snapshot = await workspace.operation.serialize()
     const { workspace: target } = createDesigner()
 
-    target.operation.from(snapshot)
+    await target.operation.from(snapshot)
 
     expect(target.operation.tree.id).toBe(workspace.operation.tree.id)
     expect(target.operation.tree.componentName).toBe('Root')
     expect(target.operation.tree.children[0].componentName).toBe('Input')
     expect(target.operation.tree.children[0].props.label).toBe('用户名')
     expect(target.operation.selection.selected).toEqual(snapshot.selected)
+
+    expect(workspace.operation.serializeSync()).toMatchObject({ selected: [workspace.operation.tree.id] })
+  })
+
+  it('runMutation 串行执行任务且单次失败不阻断后续任务', async () => {
+    const { operation } = createDesigner().workspace
+    const order: number[] = []
+    let releaseFirst: () => void = () => {}
+    const gate = new Promise<void>(resolve => {
+      releaseFirst = resolve
+    })
+
+    const first = operation.runMutation(async () => {
+      order.push(1)
+      await gate
+      order.push(2)
+    })
+    const second = operation.runMutation(() => {
+      order.push(3)
+    })
+    const failed = operation.runMutation(async () => {
+      throw new Error('boom')
+    })
+    const afterFailed = operation.runMutation(() => {
+      order.push(4)
+    })
+
+    await wait(0)
+    expect(order).toEqual([1])
+
+    releaseFirst()
+    await first
+    await second
+    await expect(failed).rejects.toThrow('boom')
+    await afterFailed
+
+    expect(order).toEqual([1, 2, 3, 4])
   })
 })

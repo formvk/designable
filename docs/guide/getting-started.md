@@ -32,14 +32,14 @@ const workspace = engine.workbench.addWorkspace({
   viewportElement: document.querySelector('#viewport')!,
 })
 
-// 3. 加载组件树
-workspace.operation.tree.from({
+// 3. 加载组件树（结构变更与历史命令均为异步 API，以下步骤位于 async 函数中）
+await workspace.operation.tree.from({
   componentName: 'Page',
   children: [{ componentName: 'Input', props: { label: '姓名' } }],
 })
 
 // 4. 记录历史快照，之后即可 undo / redo
-workspace.history.push('init')
+await workspace.history.push('init')
 ```
 
 ## 仓库开发

@@ -11,6 +11,9 @@ export const useFreeSelectionEffect = (engine: Engine) => {
       return
     }
     engine.workbench.eachWorkspace(workspace => {
+      // 拖拽节点时选中由落点逻辑接管，不能再用起止矩形框选，
+      // 否则会把拖拽沿途覆盖到的节点一并选中
+      if (workspace.operation.moveHelper.hasDragNodes) return
       const viewport = workspace.viewport
       const dragEndPoint = new Point(event.data.topClientX, event.data.topClientY)
       const dragStartOffsetPoint = viewport.getOffsetPoint(

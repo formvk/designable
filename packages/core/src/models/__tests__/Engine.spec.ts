@@ -22,7 +22,7 @@ describe('Engine', () => {
     expect(engine.workbench.currentWorkspace).toBeUndefined()
   })
 
-  it('addWorkspace / switchWorkspace / removeWorkspace 管理画布', () => {
+  it('addWorkspace / switchWorkspace / removeWorkspace 管理画布', async () => {
     const { engine, workspace } = createDesigner('w1')
 
     expect(engine.workbench.currentWorkspace).toBe(workspace)
@@ -41,7 +41,7 @@ describe('Engine', () => {
     expect(engine.workbench.workspaces).toHaveLength(2)
     expect(engine.workbench.currentWorkspace).toBe(second)
 
-    engine.workbench.switchWorkspace('w1')
+    await engine.workbench.switchWorkspace('w1')
     expect(engine.workbench.currentWorkspace).toBe(workspace)
 
     engine.workbench.removeWorkspace('w1')
@@ -138,13 +138,13 @@ describe('Engine', () => {
     expect(keyboard.includes(KeyCode.a)).toBe(false)
   })
 
-  it('管理当前组件树与节点查询', () => {
+  it('管理当前组件树与节点查询', async () => {
     const { engine } = createDesigner()
     const tree = engine.getCurrentTree()
 
     expect(tree?.componentName).toBe('Root')
 
-    engine.setCurrentTree({ componentName: 'Form', props: { layout: 'vertical' } })
+    await engine.setCurrentTree({ componentName: 'Form', props: { layout: 'vertical' } })
     expect(engine.getCurrentTree()?.componentName).toBe('Form')
 
     const node = engine.createNode({ componentName: 'Input', props: {} })
@@ -152,7 +152,7 @@ describe('Engine', () => {
     expect(engine.findNodeById(node.id)).toBe(node)
   })
 
-  it('按工作空间隔离节点索引，同 id 互不覆盖', () => {
+  it('按工作空间隔离节点索引，同 id 互不覆盖', async () => {
     const { engine, workspace } = createDesigner('w1')
     const viewportElement = document.createElement('div')
     document.body.appendChild(viewportElement)
@@ -166,8 +166,8 @@ describe('Engine', () => {
 
     const a = new TreeNode({ id: 'duplicate-id', componentName: 'Input', props: {} })
     const b = new TreeNode({ id: 'duplicate-id', componentName: 'Input', props: {} })
-    workspace.operation.tree.append(a)
-    workspace2.operation.tree.append(b)
+    await workspace.operation.tree.append(a)
+    await workspace2.operation.tree.append(b)
 
     expect(engine.findNodeById('duplicate-id', workspace)).toBe(a)
     expect(engine.findNodeById('duplicate-id', workspace2)).toBe(b)
@@ -176,7 +176,7 @@ describe('Engine', () => {
     // 工作空间内节点不再写入全局表
     expect(TreeNode.findById('duplicate-id')).toBeUndefined()
 
-    a.remove()
+    await a.remove()
     expect(engine.findNodeById('duplicate-id', workspace)).toBeUndefined()
     expect(engine.findNodeById('duplicate-id', workspace2)).toBe(b)
   })

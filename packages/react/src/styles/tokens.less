@@ -1,0 +1,108 @@
+@import './variables.less';
+
+// ---------- 基础色板 ----------
+:root,
+.@{dr-prefix}-app-light,
+[data-dr-theme='light'] {
+  --dr-color-primary: #007aff;
+  --dr-color-primary-hover: #3395ff;
+  --dr-color-primary-active: #0062cc;
+  --dr-color-primary-soft: rgba(0, 122, 255, 0.12);
+  --dr-color-danger: #ff3b30;
+  --dr-color-danger-soft: rgba(255, 59, 48, 0.12);
+  --dr-color-success: #34c759;
+  --dr-color-warning: #ff9f0a;
+
+  --dr-text-1: #1c1c1e;
+  --dr-text-2: #3a3a3c;
+  --dr-text-3: #8e8e93;
+  --dr-text-4: #aeaeb2;
+  --dr-text-inverse: #ffffff;
+
+  --dr-bg-canvas: #eef1f6;
+  --dr-bg-surface: #ffffff;
+  --dr-bg-surface-2: #f7f8fb;
+  --dr-bg-fill: rgba(120, 120, 128, 0.12);
+  --dr-bg-fill-strong: rgba(120, 120, 128, 0.2);
+  --dr-bg-hover: rgba(120, 120, 128, 0.1);
+  --dr-bg-active: rgba(120, 120, 128, 0.18);
+  --dr-bg-glass: rgba(255, 255, 255, 0.78);
+  --dr-canvas-dot: rgba(60, 60, 67, 0.16);
+
+  --dr-border: rgba(60, 60, 67, 0.12);
+  --dr-border-strong: rgba(60, 60, 67, 0.24);
+
+  --dr-shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 4px rgba(16, 24, 40, 0.06);
+  --dr-shadow-2: 0 10px 30px rgba(16, 24, 40, 0.12), 0 2px 8px rgba(16, 24, 40, 0.06);
+  --dr-shadow-3: 0 24px 56px rgba(16, 24, 40, 0.18), 0 6px 16px rgba(16, 24, 40, 0.08);
+
+  --dr-aux-cover-dragging: rgba(0, 122, 255, 0.12);
+  --dr-aux-cover-dropping: rgba(0, 122, 255, 0.2);
+  --dr-aux-free-selection-border: #007aff;
+  --dr-aux-free-selection-bg: rgba(0, 122, 255, 0.14);
+  --dr-aux-snap-line: #b0b1f3;
+  --dr-aux-dashed: #007aff;
+  --dr-aux-helper-bg: #007aff;
+  --dr-aux-helper-text: #ffffff;
+
+  color-scheme: light;
+}
+
+.@{dr-prefix}-app-dark,
+[data-dr-theme='dark'] {
+  --dr-color-primary: #0a84ff;
+  --dr-color-primary-hover: #409cff;
+  --dr-color-primary-active: #0066cc;
+  --dr-color-primary-soft: rgba(10, 132, 255, 0.22);
+  --dr-color-danger: #ff453a;
+  --dr-color-danger-soft: rgba(255, 69, 58, 0.22);
+  --dr-color-success: #30d158;
+  --dr-color-warning: #ffd60a;
+
+  --dr-text-1: #f5f5f7;
+  --dr-text-2: #d1d1d6;
+  --dr-text-3: #8e8e93;
+  --dr-text-4: #636366;
+  --dr-text-inverse: #ffffff;
+
+  --dr-bg-canvas: #0c0d0f;
+  --dr-bg-surface: #1a1b1e;
+  --dr-bg-surface-2: #24262a;
+  --dr-bg-fill: rgba(120, 120, 128, 0.24);
+  --dr-bg-fill-strong: rgba(120, 120, 128, 0.36);
+  --dr-bg-hover: rgba(120, 120, 128, 0.2);
+  --dr-bg-active: rgba(120, 120, 128, 0.32);
+  --dr-bg-glass: rgba(26, 27, 30, 0.78);
+  --dr-canvas-dot: rgba(255, 255, 255, 0.1);
+
+  --dr-border: rgba(84, 84, 88, 0.45);
+  --dr-border-strong: rgba(120, 120, 128, 0.55);
+
+  --dr-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
+  --dr-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.56), 0 2px 8px rgba(0, 0, 0, 0.36);
+  --dr-shadow-3: 0 20px 48px rgba(0, 0, 0, 0.64), 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --dr-aux-cover-dragging: rgba(10, 132, 255, 0.24);
+  --dr-aux-cover-dropping: rgba(10, 132, 255, 0.32);
+  --dr-aux-free-selection-border: #0a84ff;
+  --dr-aux-free-selection-bg: rgba(10, 132, 255, 0.2);
+  --dr-aux-snap-line: #7d7ee0;
+  --dr-aux-dashed: #0a84ff;
+  --dr-aux-helper-bg: #0a84ff;
+  --dr-aux-helper-text: #ffffff;
+
+  color-scheme: dark;
+}
+
+// ---------- 尺寸 / 圆角 / 层级 ----------
+:root {
+  --dr-radius-sm: 6px;
+  --dr-radius-md: 10px;
+  --dr-radius-lg: 14px;
+  --dr-radius-pill: 999px;
+  --dr-font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  --dr-font-size: 12px;
+  --dr-blur: saturate(180%) blur(20px);
+  --dr-z-panel: 10;
+}

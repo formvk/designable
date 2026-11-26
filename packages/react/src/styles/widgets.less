@@ -1,0 +1,711 @@
+// ==================== 画布辅助层 ====================
+.@{dr-prefix}-aux-tool {
+  pointer-events: none;
+
+  * {
+    user-select: none;
+  }
+}
+
+.@{dr-prefix}-aux-insertion {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--dr-color-primary);
+  z-index: 4;
+}
+
+.@{dr-prefix}-aux-insertion-forbid {
+  background: var(--dr-color-danger);
+}
+
+.@{dr-prefix}-aux-snap-line {
+  position: absolute;
+  background: var(--dr-aux-snap-line);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.@{dr-prefix}-aux-dashed-box {
+  position: absolute;
+  border: 1px dashed var(--dr-aux-dashed);
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 2px;
+}
+
+.@{dr-prefix}-aux-dashed-box-title {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: -1px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--dr-aux-dashed);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.@{dr-prefix}-aux-cover-rect {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 2px;
+}
+
+.@{dr-prefix}-aux-cover-rect-dragging {
+  background: var(--dr-aux-cover-dragging);
+}
+
+.@{dr-prefix}-aux-cover-rect-dropping {
+  background: var(--dr-aux-cover-dropping);
+  outline: 1px dashed var(--dr-color-primary);
+}
+
+.@{dr-prefix}-aux-free-selection {
+  position: absolute;
+  z-index: 1;
+  border: 1px solid var(--dr-aux-free-selection-border);
+  background: var(--dr-aux-free-selection-bg);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+// ==================== 选中框 ====================
+.@{dr-prefix}-aux-selection-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--dr-color-primary);
+  border-radius: 2px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.@{dr-prefix}-aux-selection-box-inner {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+// ==================== 缩放手柄 ====================
+.@{dr-prefix}-aux-node-resize-handler {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid var(--dr-color-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  pointer-events: all;
+
+  &.left-center {
+    left: 0;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    cursor: ew-resize;
+  }
+
+  &.right-center {
+    left: 100%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    cursor: ew-resize;
+  }
+
+  &.center-top {
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -50%);
+    cursor: ns-resize;
+  }
+
+  &.center-bottom {
+    left: 50%;
+    top: 100%;
+    transform: translate(-50%, -50%);
+    cursor: ns-resize;
+  }
+
+  &.left-top {
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    cursor: nwse-resize;
+  }
+
+  &.right-top {
+    left: 100%;
+    top: 0;
+    transform: translate(-50%, -50%);
+    cursor: nesw-resize;
+  }
+
+  &.left-bottom {
+    left: 0;
+    top: 100%;
+    transform: translate(-50%, -50%);
+    cursor: nesw-resize;
+  }
+
+  &.right-bottom {
+    left: 100%;
+    top: 100%;
+    transform: translate(-50%, -50%);
+    cursor: nwse-resize;
+  }
+}
+
+// ==================== 自由移动手柄 ====================
+.@{dr-prefix}-aux-node-translate-handler {
+  position: absolute;
+  left: 50%;
+  bottom: -26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--dr-aux-helper-bg);
+  box-shadow: var(--dr-shadow-1);
+  transform: translateX(-50%);
+  pointer-events: all;
+  cursor: move;
+}
+
+// ==================== 操作工具条 ====================
+.@{dr-prefix}-aux-helpers {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 28px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--dr-bg-glass);
+  border: 1px solid var(--dr-border);
+  box-shadow: var(--dr-shadow-2);
+  -webkit-backdrop-filter: var(--dr-blur);
+  backdrop-filter: var(--dr-blur);
+  pointer-events: all;
+  white-space: nowrap;
+
+  .@{dr-prefix}-aux-action {
+    height: 22px;
+    min-width: 22px;
+    padding: 0 4px;
+    border-radius: 6px;
+    color: var(--dr-text-2);
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .@{dr-prefix}-aux-action:hover {
+    color: var(--dr-color-primary);
+  }
+
+  .@{dr-prefix}-aux-action-danger:hover {
+    color: var(--dr-color-danger) !important;
+  }
+}
+
+.@{dr-prefix}-aux-selector {
+  display: inline-flex;
+  align-items: center;
+}
+
+.@{dr-prefix}-aux-selector-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  max-width: 160px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  background: var(--dr-color-primary);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--dr-color-primary-hover);
+  }
+}
+
+.@{dr-prefix}-aux-selector-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.@{dr-prefix}-aux-selector-arrow {
+  opacity: 0.7;
+  width: 10px;
+  height: 10px;
+}
+
+.@{dr-prefix}-aux-drag-handler {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dr-text-2);
+  cursor: move;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover {
+    background: var(--dr-bg-hover);
+    color: var(--dr-color-primary);
+  }
+}
+
+// ==================== 间距标尺 ====================
+.@{dr-prefix}-aux-space-block-ruler-indicator {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: var(--dr-radius-pill);
+  background: var(--dr-color-primary);
+  color: #fff;
+  font-size: 10px;
+  z-index: 2;
+}
+
+.@{dr-prefix}-aux-space-block-ruler-h {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  border-left: 1px solid var(--dr-color-primary);
+  border-right: 1px solid var(--dr-color-primary);
+  transform: translateY(-50%);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: var(--dr-color-primary);
+  }
+
+  .@{dr-prefix}-aux-space-block-ruler-indicator {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.@{dr-prefix}-aux-space-block-ruler-v {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 12px;
+  height: 100%;
+  border-top: 1px solid var(--dr-color-primary);
+  border-bottom: 1px solid var(--dr-color-primary);
+  transform: translateX(-50%);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+    background: var(--dr-color-primary);
+  }
+
+  .@{dr-prefix}-aux-space-block-ruler-indicator {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.@{dr-prefix}-aux-space-block-line {
+  stroke: var(--dr-color-primary);
+}
+
+.@{dr-prefix}-aux-space-block-threshold {
+  border-radius: 2px;
+  background: var(--dr-color-danger-soft);
+}
+
+// ==================== 大纲树 ====================
+.@{dr-prefix}-outline-tree-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--dr-bg-surface);
+}
+
+.@{dr-prefix}-outline-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--dr-border);
+}
+
+.@{dr-prefix}-outline-tree-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dr-text-2);
+}
+
+.@{dr-prefix}-outline-tree-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 4px 4px 20px;
+  overflow: auto;
+}
+
+.@{dr-prefix}-outline-tree-aux {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.@{dr-prefix}-outline-tree-insertion {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--dr-color-primary);
+}
+
+.@{dr-prefix}-outline-tree-insertion-forbid {
+  background: var(--dr-color-danger);
+}
+
+.@{dr-prefix}-outline-tree-node {
+  position: relative;
+  user-select: none;
+  min-width: 100%;
+  width: fit-content;
+}
+
+.@{dr-prefix}-outline-tree-node-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding-right: 6px;
+  border-radius: 7px;
+  color: var(--dr-text-2);
+  cursor: default;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--dr-bg-hover);
+  }
+}
+
+.@{dr-prefix}-outline-tree-node-expand,
+.@{dr-prefix}-outline-tree-node-expand-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dr-text-3);
+  cursor: pointer;
+}
+
+.@{dr-prefix}-outline-tree-node-expand svg {
+  transition: transform 0.16s ease;
+}
+
+.@{dr-prefix}-outline-tree-node-expand-open svg {
+  transform: rotate(90deg);
+}
+
+.@{dr-prefix}-outline-tree-node-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--dr-text-3);
+}
+
+.@{dr-prefix}-outline-tree-node-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.@{dr-prefix}-outline-tree-node-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+}
+
+.@{dr-prefix}-outline-tree-node-header:hover .@{dr-prefix}-outline-tree-node-actions,
+.@{dr-prefix}-outline-tree-node-selected .@{dr-prefix}-outline-tree-node-actions,
+.@{dr-prefix}-outline-tree-node-eye-hidden {
+  opacity: 1;
+}
+
+.@{dr-prefix}-outline-tree-node-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dr-text-4);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--dr-bg-active);
+    color: var(--dr-text-2);
+  }
+}
+
+.@{dr-prefix}-outline-tree-node-eye-hidden {
+  color: var(--dr-color-warning);
+}
+
+.@{dr-prefix}-outline-tree-node-selected > .@{dr-prefix}-outline-tree-node-header {
+  background: var(--dr-color-primary-soft);
+  color: var(--dr-color-primary);
+
+  .@{dr-prefix}-outline-tree-node-icon {
+    color: var(--dr-color-primary);
+  }
+}
+
+.@{dr-prefix}-outline-tree-node-droppable > .@{dr-prefix}-outline-tree-node-header {
+  outline: 1px dashed var(--dr-color-primary);
+  outline-offset: -1px;
+  background: var(--dr-color-primary-soft);
+}
+
+// ==================== 资源面板 ====================
+.@{dr-prefix}-resource {
+  padding: 2px 0 8px;
+}
+
+.@{dr-prefix}-resource-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--dr-text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--dr-text-1);
+  }
+}
+
+.@{dr-prefix}-resource-header-expand {
+  display: inline-flex;
+  transition: transform 0.16s ease;
+  transform: rotate(90deg);
+}
+
+.@{dr-prefix}-resource:not(.@{dr-prefix}-resource-expand) .@{dr-prefix}-resource-header-expand {
+  transform: rotate(0deg);
+}
+
+.@{dr-prefix}-resource-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 12px 2px;
+}
+
+.@{dr-prefix}-resource-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 68px;
+  padding: 10px 4px;
+  border: 1px solid var(--dr-border);
+  border-radius: var(--dr-radius-md);
+  background: linear-gradient(180deg, var(--dr-bg-surface), var(--dr-bg-surface-2));
+  color: var(--dr-text-2);
+  cursor: grab;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.12s ease;
+
+  &:hover {
+    border-color: var(--dr-color-primary);
+    box-shadow: 0 6px 16px rgba(0, 122, 255, 0.14);
+    transform: translateY(-1px);
+
+    .@{dr-prefix}-resource-item-icon {
+      background: var(--dr-color-primary-soft);
+      color: var(--dr-color-primary);
+    }
+
+    .@{dr-prefix}-resource-item-text {
+      color: var(--dr-color-primary);
+    }
+  }
+
+  &:active {
+    cursor: grabbing;
+    transform: scale(0.97);
+  }
+}
+
+.@{dr-prefix}-resource-item-thumb {
+  max-width: 100%;
+  max-height: 36px;
+  object-fit: contain;
+}
+
+.@{dr-prefix}-resource-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--dr-bg-fill);
+  color: var(--dr-text-2);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.@{dr-prefix}-resource-item-text {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  transition: color 0.16s ease;
+}
+
+.@{dr-prefix}-resource-item-remain {
+  min-height: 68px;
+}
+
+.@{dr-prefix}-resource-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.@{dr-prefix}-resource-list-search {
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.@{dr-prefix}-resource-list-empty {
+  padding: 20px 8px;
+  text-align: center;
+  color: var(--dr-text-4);
+  font-size: 11px;
+}
+
+// ==================== 历史记录 ====================
+.@{dr-prefix}-history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  overflow: auto;
+
+  &-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--dr-text-2);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--dr-bg-hover);
+    }
+  }
+
+  &-item-active {
+    background: var(--dr-color-primary-soft);
+    color: var(--dr-color-primary);
+  }
+
+  &-item-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &-item-timestamp {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: var(--dr-text-4);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &-empty {
+    padding: 20px 8px;
+    text-align: center;
+    color: var(--dr-text-4);
+    font-size: 11px;
+  }
+}
+
+// ==================== 幽灵节点 ====================
+.@{dr-prefix}-ghost-widget {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+}

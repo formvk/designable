@@ -42,10 +42,12 @@ const tree = workspace.operation.tree
 const input = tree.children[0]
 
 input.props.label = '用户名' // 深层响应式
-input.append(new TreeNode({ componentName: 'Button', props: {} }))
+await input.append(new TreeNode({ componentName: 'Button', props: {} }))
 
-tree.serialize() // 快照，供 History 使用
+await tree.serialize() // 快照，供 History 使用；同步展示场景可用 tree.serializeSync()
 ```
+
+结构变更、序列化与历史命令均为异步 API（返回 Promise）。
 
 `TreeNode` 提供 `find`、`append`、`insertBefore/After`、`takeSnapshot`、`triggerMutation`
 等编辑能力，并支持 `GlobalRegistry` 注入的 `designerProps`、`designerLocales`。
@@ -53,7 +55,9 @@ tree.serialize() // 快照，供 History 使用
 ## Selection / History
 
 - `selection.select(node)` / `remove(node)` / `batch()` 管理选中节点 id。
-- `history.push()` / `undo()` / `redo()` 基于全量快照恢复整棵树，`allowUndo` / `allowRedo` 响应式可用。
+- `history.push()` / `undo()` / `redo()` / `goTo()` 基于全量快照恢复整棵树并返回 Promise，命令串行执行；`allowUndo` / `allowRedo` 响应式可用。
+- 初始快照在 History 构造期通过同步的 `serializeSync()` 写入，绕过 serialize 中间件。因此 `serializeSync()` 的输出必须是不依赖中间件转换的规范原始格式，且始终能被 `from()` 无损还原；serialize 中间件若改写数据格式，需要自行保证 deserialize 链路对原始格式透传。
+- 同一工作区的结构变更经由 `Operation` 互斥队列串行执行：历史恢复在途时触发的变更会排队等待，不会与快照恢复并发改写组件树。
 
 ## Viewport / 事件
 

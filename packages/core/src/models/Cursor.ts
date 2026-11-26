@@ -78,6 +78,28 @@ const setCursorStyle = (contentWindow: Window, style: string) => {
   }
 }
 
+/**
+ * 拖拽期间禁用文本选择：否则按住鼠标拖动节点会把画布内的文字选中。
+ * 同时作用于当前文档与画布内容窗口（iframe）的根节点。
+ */
+const setUserSelect = (contentWindow: Window, value: string) => {
+  const roots = [document?.documentElement, contentWindow?.document?.documentElement]
+  roots.forEach(root => {
+    if (root && root.style.userSelect !== value) {
+      root.style.userSelect = value
+    }
+  })
+}
+
+/**
+ * 清除已发生的原生文本选择：拖拽开始前浏览器可能已经选中了一部分文字。
+ */
+const clearSelection = (contentWindow: Window) => {
+  ;[globalThisPolyfill, contentWindow].forEach(win => {
+    win?.getSelection?.()?.removeAllRanges?.()
+  })
+}
+
 const calcPositionDelta = (end: ICursorPosition, start: ICursorPosition): ICursorPosition => {
   return Object.keys(end || {}).reduce((buf, key) => {
     if (isValidNumber(end?.[key]) && isValidNumber(start?.[key])) {
@@ -124,7 +146,16 @@ export class Cursor {
 
   @action
   setStatus(status: CursorStatus) {
+    if (this.status === status) return
     this.status = status
+    const userSelect = status === CursorStatus.Normal ? '' : 'none'
+    this.engine.workbench?.eachWorkspace?.(workspace => {
+      const contentWindow = workspace.viewport?.contentWindow
+      setUserSelect(contentWindow, userSelect)
+      if (status !== CursorStatus.Normal) {
+        clearSelection(contentWindow)
+      }
+    })
   }
 
   @action

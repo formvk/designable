@@ -60,6 +60,23 @@ describe('Shortcut', () => {
     expect(shortcut.match([KeyCode.Escape, KeyCode.Control, KeyCode.Z], {} as any)).toBe(false)
   })
 
+  it('异步 handler 抛错时通过 reportError 上报', async () => {
+    const error = new Error('boom')
+    const shortcut = new Shortcut({
+      codes: [KeyCode.Z],
+      handler: async () => {
+        throw error
+      },
+    })
+    const reporter = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(shortcut.matched(true, {} as any)).toBe(true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(reporter).toHaveBeenCalledWith(error)
+    reporter.mockRestore()
+  })
+
   it('match 优先使用自定义 matcher', () => {
     const handler = vi.fn()
     const matcher = vi.fn(codes => codes.includes('z' as KeyCode))

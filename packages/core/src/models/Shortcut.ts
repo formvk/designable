@@ -1,19 +1,22 @@
 import { KeyCode } from '@formvk/designable-shared'
 import { isFn } from '@formvk/shared'
 
+import { reportError } from '../internals'
 import type { IEngineContext } from '../types'
+import { DESIGNER_PIPELINES } from './Pipeline'
+import type { IShortcutContext, MaybePromise } from './Pipeline'
 
 export { KeyCode }
 
 export interface IShortcutProps {
   codes: KeyCode[] | KeyCode[][]
   matcher?: (codes: KeyCode[]) => boolean
-  handler?: (context: IEngineContext) => void
+  handler?: (context: IEngineContext) => MaybePromise<void>
 }
 
 export class Shortcut {
   codes: KeyCode[][]
-  handler?: (context: IEngineContext) => void
+  handler?: (context: IEngineContext) => MaybePromise<void>
   matcher?: (codes: KeyCode[]) => boolean
   constructor(props: IShortcutProps) {
     this.codes = this.parseCodes(props.codes)
@@ -49,8 +52,27 @@ export class Shortcut {
   }
 
   matched(matched: boolean, context: IEngineContext) {
-    if (isFn(this.handler) && matched) {
-      this.handler(context)
+    const handler = this.handler
+    if (isFn(handler) && matched) {
+      const pipeline = context?.engine?.pipeline
+      // 匹配保持同步以维持 preventDefault 时序，处理器异步执行并统一上报错误
+      if (pipeline) {
+        const pipelineContext: IShortcutContext = {
+          engine: context.engine,
+          shortcut: this,
+          context,
+        }
+        void pipeline
+          .run(DESIGNER_PIPELINES.shortcut, pipelineContext, async () => {
+            pipelineContext.executed = true
+            await handler(context)
+          })
+          .catch(reportError)
+      } else {
+        void (async () => {
+          await handler(context)
+        })().catch(reportError)
+      }
     }
     return matched
   }

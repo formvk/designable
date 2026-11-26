@@ -1,10 +1,12 @@
 import { Rect } from '@formvk/designable-shared'
 import { describe, expect, it, vi } from 'vitest'
 
-import { GlobalRegistry } from '../../registry'
+import { Registry } from '../Registry'
 import { TreeNode } from '../TreeNode'
 
-GlobalRegistry.registerDesignerBehaviors({
+const registry = new Registry()
+
+registry.registerDesignerBehaviors({
   pkg: {
     Behavior: [
       {
@@ -52,41 +54,45 @@ GlobalRegistry.registerDesignerBehaviors({
 let uid = 0
 const unique = (prefix: string) => `${prefix}-${++uid}`
 
-const createTree = () => {
-  const root = new TreeNode({ id: unique('root'), componentName: 'TestNode', props: {} })
+const createMockOperation = () => ({
+  engine: { registry },
+  dispatch: vi.fn((_event: any, callback?: () => any) => callback?.()),
+  runMutation: (task: () => any) => Promise.resolve(task()),
+  snapshot: vi.fn(),
+  selection: {
+    remove: vi.fn(),
+    has: vi.fn(() => false),
+    select: vi.fn(),
+    length: 0,
+    first: undefined,
+  },
+  hover: { clear: vi.fn() },
+  workspace: {},
+  nodes: new Map(),
+})
+
+const createTree = async (operation?: any) => {
+  const root = new TreeNode({ id: unique('root'), componentName: 'TestNode', props: {}, operation })
   const a = new TreeNode({ id: unique('a'), componentName: 'TestNode', props: { title: 'A' } })
   const b = new TreeNode({ id: unique('b'), componentName: 'TestNode', props: {} })
   const child = new TreeNode({ id: unique('child'), componentName: 'TestChild', props: {} })
-  root.append(a, b)
-  a.append(child)
+  await root.append(a, b)
+  await a.append(child)
   return { root, a, b, child }
 }
 
-const createOperation = () => {
-  const operation: any = {
-    dispatch: vi.fn((_event: any, callback?: () => any) => callback?.()),
-    snapshot: vi.fn(),
-    selection: {
-      remove: vi.fn(),
-      has: vi.fn(() => false),
-      select: vi.fn(),
-      length: 0,
-      first: undefined,
-    },
-    hover: { clear: vi.fn() },
-    workspace: {},
-    nodes: new Map(),
-  }
+const createOperation = async () => {
+  const operation: any = createMockOperation()
   const root = new TreeNode({ id: unique('opRoot'), componentName: 'TestNode', operation } as any)
   operation.tree = root
   const node = new TreeNode({ id: unique('opNode'), componentName: 'TestNode', props: { a: 1 } })
-  root.append(node)
+  await root.append(node)
   return { operation, root, node }
 }
 
 describe('TreeNode', () => {
-  it('构造节点并维护层级关系', () => {
-    const { root, a, child } = createTree()
+  it('构造节点并维护层级关系', async () => {
+    const { root, a, child } = await createTree()
 
     expect(root.isRoot).toBe(true)
     expect(root.depth).toBe(0)
@@ -106,8 +112,8 @@ describe('TreeNode', () => {
     expect(TreeNode.findById(a.id)).toBe(a)
   })
 
-  it('前后兄弟、索引与子节点访问', () => {
-    const { root, a, b, child } = createTree()
+  it('前后兄弟、索引与子节点访问', async () => {
+    const { root, a, b, child } = await createTree()
 
     expect(a.previous).toBeUndefined()
     expect(a.next).toBe(b)
@@ -129,8 +135,8 @@ describe('TreeNode', () => {
     expect(child.descendants).toEqual([])
   })
 
-  it('getParents / getParentByDepth 支持回溯祖先', () => {
-    const { root, a, child } = createTree()
+  it('getParents / getParentByDepth 支持回溯祖先', async () => {
+    const { root, a, child } = await createTree()
 
     expect(child.getParents()).toEqual([a, root])
     expect(child.getParentByDepth(1)).toBe(a)
@@ -139,8 +145,8 @@ describe('TreeNode', () => {
     expect(root.getParents()).toEqual([])
   })
 
-  it('find / findAll / contains / distanceTo / crossSiblings', () => {
-    const { root, a, b, child } = createTree()
+  it('find / findAll / contains / distanceTo / crossSiblings', async () => {
+    const { root, a, b, child } = await createTree()
 
     expect(root.find(node => node.id === 'missing')).toBeUndefined()
     expect(root.find(node => node.id === root.id)).toBe(root)
@@ -156,21 +162,21 @@ describe('TreeNode', () => {
 
     expect(a.distanceTo(b)).toBe(1)
     expect(a.distanceTo(child)).toBe(Infinity)
-    expect(a.distanceTo(createTree().a)).toBe(Infinity)
+    expect(a.distanceTo((await createTree()).a)).toBe(Infinity)
 
     const p = new TreeNode({ id: unique('p'), componentName: 'TestNode', props: {} })
     const x = new TreeNode({ id: unique('x'), componentName: 'TestNode', props: {} })
     const y = new TreeNode({ id: unique('y'), componentName: 'TestNode', props: {} })
     const z = new TreeNode({ id: unique('z'), componentName: 'TestNode', props: {} })
-    p.append(x, y, z)
+    await p.append(x, y, z)
 
     expect(x.crossSiblings(z)).toEqual([y])
     expect(x.crossSiblings(y)).toEqual([])
     expect(x.crossSiblings(a)).toEqual([])
   })
 
-  it('isMyAncestor / isMyChild 系列判定', () => {
-    const { root, a, b, child } = createTree()
+  it('isMyAncestor / isMyChild 系列判定', async () => {
+    const { root, a, b, child } = await createTree()
 
     expect(child.isMyAncestor(root)).toBe(true)
     expect(child.isMyAncestor(child)).toBe(false)
@@ -187,8 +193,8 @@ describe('TreeNode', () => {
     expect(b.isMyChildren(child)).toBe(false)
   })
 
-  it('allow* 方法依据设计器属性判定', () => {
-    const { root, a, b, child } = createTree()
+  it('allow* 方法依据设计器属性判定', async () => {
+    const { root, a, b, child } = await createTree(createMockOperation())
     const forbid = new TreeNode({ id: unique('forbid'), componentName: 'Forbid', props: {} }, root)
 
     expect(a.designerProps.droppable).toBe(true)
@@ -219,19 +225,19 @@ describe('TreeNode', () => {
     expect(root.allowDelete()).toBe(false)
   })
 
-  it('designerLocales / getMessage 合并多语言文案', () => {
-    const { a } = createTree()
-    GlobalRegistry.registerDesignerLocales({ 'zh-CN': { Other: '其他' } })
-    GlobalRegistry.setDesignerLanguage('zh-CN')
+  it('designerLocales / getMessage 合并多语言文案', async () => {
+    const { a } = await createTree(createMockOperation())
+    registry.registerDesignerLocales({ 'zh-CN': { Other: '其他' } })
+    registry.setDesignerLanguage('zh-CN')
 
     expect(a.designerLocales).toEqual({ 'zh-cn': { hello: '你好' } })
     expect(a.getMessage('hello')).toBe('你好')
   })
 
-  it('setProps / setComponentName 更新节点', () => {
-    const { a } = createTree()
+  it('setProps / setComponentName 更新节点', async () => {
+    const { a } = await createTree(createMockOperation())
 
-    a.setProps({ title: 'B', extra: 1 })
+    await a.setProps({ title: 'B', extra: 1 })
     expect(a.props).toMatchObject({ title: 'B', extra: 1 })
 
     a.setComponentName('TestChild')
@@ -239,73 +245,73 @@ describe('TreeNode', () => {
     expect(a.allowResize()).toEqual(['x'])
   })
 
-  it('append / prepend / insertBefore / insertAfter / insertChildren / setChildren', () => {
-    const { root, a, b, child } = createTree()
+  it('append / prepend / insertBefore / insertAfter / insertChildren / setChildren', async () => {
+    const { root, a, b, child } = await createTree()
     const newNode = (name: string) => new TreeNode({ id: unique(name), componentName: 'TestNode', props: {} })
 
-    expect(a.append(root)).toEqual([])
+    expect(await a.append(root)).toEqual([])
 
     const c = newNode('c')
     const d = newNode('d')
-    expect(root.append(c, d)).toEqual([c, d])
+    expect(await root.append(c, d)).toEqual([c, d])
     expect(root.children).toEqual([a, b, c, d])
 
     const e = newNode('e')
-    expect(root.prepend(e)).toEqual([e])
+    expect(await root.prepend(e)).toEqual([e])
     expect(root.children).toEqual([e, a, b, c, d])
 
     const before = newNode('before')
-    expect(a.insertBefore(before)).toEqual([before])
+    expect(await a.insertBefore(before)).toEqual([before])
     expect(root.children).toEqual([e, before, a, b, c, d])
 
     const after = newNode('after')
-    expect(a.insertAfter(after)).toEqual([after])
+    expect(await a.insertAfter(after)).toEqual([after])
     expect(root.children).toEqual([e, before, a, after, b, c, d])
 
     const inserted = newNode('inserted')
-    expect(root.insertChildren(1, inserted)).toEqual([inserted])
+    expect(await root.insertChildren(1, inserted)).toEqual([inserted])
     expect(root.children).toEqual([e, inserted, before, a, after, b, c, d])
 
-    expect(root.insertAfter(newNode('orphan'))).toEqual([])
+    expect(await root.insertAfter(newNode('orphan'))).toEqual([])
 
     const x = newNode('x')
     const y = newNode('y')
-    expect(root.setChildren(x, y)).toEqual([x, y])
+    expect(await root.setChildren(x, y)).toEqual([x, y])
     expect(root.children).toEqual([x, y])
     expect(child.parent).toBe(a)
   })
 
-  it('resetNodesParent 处理普通节点与来源节点', () => {
-    const { root } = createTree()
+  it('resetNodesParent 处理普通节点与来源节点', async () => {
+    const { root } = await createTree()
     const normal = new TreeNode({ id: unique('normal'), componentName: 'TestNode', props: {} })
-    expect(root.append(normal)).toEqual([normal])
+    expect(await root.append(normal)).toEqual([normal])
     expect(normal.parent).toBe(root)
     expect(normal.root).toBe(root)
     expect(normal.depth).toBe(1)
 
     const sourceRoot = new TreeNode({ id: unique('source'), isSourceNode: true, props: {} } as any)
     const sourceChild = new TreeNode({ id: unique('sourceChild'), componentName: 'TestNode', props: {} }, sourceRoot)
-    const appended = root.append(sourceChild)
+    const appended = await root.append(sourceChild)
     expect(appended).toHaveLength(1)
     expect(appended[0]).not.toBe(sourceChild)
     expect(appended[0].componentName).toBe('TestNode')
   })
 
-  it('remove 从父级移除并清理注册表', () => {
-    const { root, a, b } = createTree()
+  it('remove 从父级移除并清理注册表', async () => {
+    const { root, a, b } = await createTree()
 
-    a.remove()
+    await a.remove()
     expect(root.children).toEqual([b])
     expect(TreeNode.findById(a.id)).toBeUndefined()
 
-    TreeNode.remove([root, b])
+    await TreeNode.remove([root, b])
     expect(root.children).toEqual([])
     expect(TreeNode.findById(b.id)).toBeUndefined()
   })
 
-  it('clone 深拷贝节点与子节点', () => {
-    const { a, child } = createTree()
-    const cloned = a.clone()
+  it('clone 深拷贝节点与子节点', async () => {
+    const { a, child } = await createTree()
+    const cloned = await a.clone()
 
     expect(cloned).not.toBe(a)
     expect(cloned.id).not.toBe(a.id)
@@ -317,20 +323,21 @@ describe('TreeNode', () => {
     expect(cloned.children[0].parent).toBe(cloned)
 
     const otherParent = new TreeNode({ id: unique('other'), componentName: 'TestNode', props: {} })
-    expect(a.clone(otherParent).parent).toBe(otherParent)
+    expect((await a.clone(otherParent)).parent).toBe(otherParent)
   })
 
-  it('serialize / from 支持序列化与反序列化', () => {
-    const { a, child } = createTree()
-    const serialized = a.serialize()
+  it('serialize / serializeSync / from 支持序列化与反序列化', async () => {
+    const { a, child } = await createTree()
+    const serialized = await a.serialize()
 
     expect(serialized.id).toBe(a.id)
     expect(serialized.componentName).toBe(a.componentName)
     expect(serialized.props).toEqual({ title: 'A' })
     expect(serialized.children![0].id).toBe(child.id)
+    expect(a.serializeSync()).toMatchObject({ id: a.id, componentName: a.componentName })
 
     const node = new TreeNode({ id: unique('from'), componentName: 'TestNode', props: {} })
-    node.from({
+    await node.from({
       id: unique('fromSource'),
       componentName: 'TestChild',
       props: { b: 2 },
@@ -346,8 +353,8 @@ describe('TreeNode', () => {
     expect(TreeNode.findById(node.id)).toBe(node)
   })
 
-  it('eachTree / eachChildren 支持中断遍历', () => {
-    const { root, a, child, b } = createTree()
+  it('eachTree / eachChildren 支持中断遍历', async () => {
+    const { root, a, child, b } = await createTree()
     const visited: string[] = []
 
     root.eachTree(node => {
@@ -366,10 +373,20 @@ describe('TreeNode', () => {
     expect(() => root.eachChildren('invalid' as any)).not.toThrow()
   })
 
-  it('静态过滤方法依据节点能力筛选', () => {
-    const { root, a, b, child } = createTree()
-    const forbid = new TreeNode({ id: unique('forbid'), componentName: 'Forbid', props: {} })
-    const detached = new TreeNode({ id: unique('detached'), componentName: 'TestNode', props: {} })
+  it('静态过滤方法依据节点能力筛选', async () => {
+    const { root, a, b, child } = await createTree(createMockOperation())
+    const forbid = new TreeNode({
+      id: unique('forbid'),
+      componentName: 'Forbid',
+      props: {},
+      operation: createMockOperation(),
+    } as any)
+    const detached = new TreeNode({
+      id: unique('detached'),
+      componentName: 'TestNode',
+      props: {},
+      operation: createMockOperation(),
+    } as any)
     const dragNodes = new TreeNode(
       {
         id: unique('dragNodes'),
@@ -396,17 +413,17 @@ describe('TreeNode', () => {
     expect(TreeNode.filterDraggable([root, a, forbid])).toEqual([a])
     expect(TreeNode.filterDraggable([dragNodes])).toEqual([b])
     expect(TreeNode.filterDraggable([resource])).toEqual([a, b])
-    expect(TreeNode.filterDroppable([a, forbid], root)).toEqual([a])
-    expect(TreeNode.filterDroppable([a, dropNodes], root)).toEqual([a, root])
-    expect(TreeNode.filterDroppable([resource], root)).toEqual([a, b])
+    expect(await TreeNode.filterDroppable([a, forbid], root)).toEqual([a])
+    expect(await TreeNode.filterDroppable([a, dropNodes], root)).toEqual([a, root])
+    expect(await TreeNode.filterDroppable([resource], root)).toEqual([a, b])
     expect(TreeNode.sort([b, a].slice()).map(node => node.id)).toEqual([a.id, b.id])
   })
 
-  it('operation 存在时派发事件并记录快照', () => {
-    const { operation, node } = createOperation()
+  it('operation 存在时派发事件并记录快照', async () => {
+    const { operation, node } = await createOperation()
 
     expect(node.operation).toBe(operation)
-    node.setProps({ a: 2 })
+    await node.setProps({ a: 2 })
     expect(node.props.a).toBe(2)
     expect(operation.dispatch).toHaveBeenCalled()
     expect(operation.snapshot).toHaveBeenCalledWith('update:node:props')
@@ -415,8 +432,8 @@ describe('TreeNode', () => {
     expect(operation.snapshot).toHaveBeenLastCalledWith('manual')
   })
 
-  it('元素与布局查询转发到视口', () => {
-    const { operation, node } = createOperation()
+  it('元素与布局查询转发到视口', async () => {
+    const { operation, node } = await createOperation()
     const element = document.createElement('div')
     const rect = new Rect(0, 0, 10, 10)
     const viewport = {
@@ -448,24 +465,35 @@ describe('TreeNode', () => {
     expect(node.getElementOffsetRect()).toBeUndefined()
   })
 
-  it('triggerMutation 在没有 operation 时直接执行回调', () => {
-    const { a } = createTree()
+  it('triggerMutation 在没有 operation 时直接执行回调', async () => {
+    const { a } = await createTree()
     const callback = vi.fn(() => 'result')
 
-    expect(a.triggerMutation({ type: 'custom' }, callback)).toBe('result')
+    expect(await a.triggerMutation({ type: 'custom' }, callback)).toBe('result')
     expect(callback).toHaveBeenCalled()
-    expect(a.triggerMutation({ type: 'custom' }, undefined, 'default')).toBe('default')
+    expect(await a.triggerMutation({ type: 'custom' }, undefined, 'default')).toBe('default')
   })
 
-  it('静态 clone 复制选中的节点', () => {
-    const { operation, root, node } = createOperation()
+  it('静态 clone 复制选中的节点', async () => {
+    const { operation, root, node } = await createOperation()
     operation.selection.has = vi.fn(() => true)
 
-    TreeNode.clone([node])
+    await TreeNode.clone([node])
 
     expect(root.children).toHaveLength(2)
     expect(root.children[0]).toBe(node)
     expect(root.children[1]).not.toBe(node)
     expect(root.children[1].componentName).toBe('TestNode')
+  })
+
+  it('并发 append 时两个节点都保留', async () => {
+    const { a } = await createTree()
+    const x = new TreeNode({ id: unique('x'), componentName: 'TestNode', props: {} })
+    const y = new TreeNode({ id: unique('y'), componentName: 'TestNode', props: {} })
+
+    await Promise.all([a.append(x), a.append(y)])
+
+    expect(a.children).toContain(x)
+    expect(a.children).toContain(y)
   })
 })

@@ -1,5 +1,5 @@
 import type { TreeNode } from '../models'
-import { KeyCode, Shortcut } from '../models'
+import { KeyCode, Shortcut } from '../models/Shortcut'
 
 const findBottomLastChild = (node: TreeNode) => {
   if (!node) return node
