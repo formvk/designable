@@ -19,7 +19,9 @@
     "resolveJsonModule": true,
     "types": ["node"],
     "paths": {
-      "@formvk/designable-*": ["./packages/*/src"]
+      "@formvk/designable-*": ["./packages/*/src"],
+      "@formvk/designable-react/style.less": ["./packages/react/src/styles/index.less"],
+      "@formvk/designable-react/theme.less": ["./packages/react/src/styles/theme.less"]
     }
   }
 }

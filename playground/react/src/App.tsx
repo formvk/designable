@@ -79,7 +79,7 @@ export const App = () => {
         },
       }}
     >
-      <Designer engine={engine} theme={theme} locale={locale} position="fixed" plugins={plugins}>
+      <Designer engine={engine} theme={theme} locale={locale} position="absolute" plugins={plugins}>
         <Workbench>
           <StudioPanel
             logo={
