@@ -1,4 +1,4 @@
-export { useObserver } from '@formvk/reactive-react'
+export { observer, useObserver } from '@formvk/reactive-react'
 export * from './useDesigner'
 export * from './useWorkspace'
 export * from './useConfig'

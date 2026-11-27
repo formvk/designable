@@ -1,22 +1,22 @@
 import { reportError, ScreenType } from '@formvk/designable-core'
-import { DESIGNER_SLOTS, useHistory, useObserver, useScreen, useText } from '@formvk/designable-react'
+import { DESIGNER_SLOTS, observer, useHistory, useScreen, useText } from '@formvk/designable-react'
 import type { IDesignerPlugin } from '@formvk/designable-react'
 import { Icon } from '@formvk/designable-react-icons'
 import { Button, Input, Segmented, Space, Tooltip } from 'antd'
 import { useEffect, useState } from 'react'
 
-const ScreenTools = () => {
+const ScreenTools = observer(() => {
   const history = useHistory()
   const screen = useScreen()
   const t = useText()
-  const allowUndo = useObserver(() => history?.allowUndo)
-  const allowRedo = useObserver(() => history?.allowRedo)
-  const state = useObserver(() => ({
+  const allowUndo = history?.allowUndo
+  const allowRedo = history?.allowRedo
+  const state = {
     type: screen.type,
     width: screen.width,
     height: screen.height,
     flip: screen.flip,
-  }))
+  }
   const [width, setWidth] = useState(String(state.width))
   const [height, setHeight] = useState(String(state.height))
 
@@ -105,7 +105,7 @@ const ScreenTools = () => {
       ) : null}
     </Space>
   )
-}
+})
 
 export const screenToolsPlugin: IDesignerPlugin = {
   name: 'demo.screen-tools',

@@ -1,4 +1,4 @@
-import { action, observable } from '@formvk/reactive'
+import { action, reactive } from '@formvk/reactive'
 import { isStr, isArr } from '@formvk/shared'
 
 import { SelectNodeEvent, UnSelectNodeEvent } from '../events'
@@ -12,7 +12,7 @@ export interface ISelection {
 
 export class Selection {
   operation: Operation
-  @observable accessor selected: string[] = []
+  @reactive accessor selected: string[] = []
   indexes: Record<string, boolean> = {}
 
   constructor(props: ISelection) {

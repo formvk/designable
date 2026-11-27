@@ -16,6 +16,8 @@ hero:
 features:
   - title: Formvk 响应式内核
     details: 模型通过标准装饰器（@observable / @shallowRef / @computed / @action）声明响应式，基于 @formvk/reactive 获得细粒度依赖追踪。
+  - title: React 视图层
+    details: '@formvk/designable-react 内置完整面板，基于 observer 精确订阅；hooks、插件与插槽可按需扩展。'
   - title: 视图无关
     details: core 只包含模型与事件，可搭配 React、Vue 或任意渲染层使用。
   - title: 完整的编辑器模型

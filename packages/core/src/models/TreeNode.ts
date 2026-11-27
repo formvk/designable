@@ -1,4 +1,4 @@
-import { action, computed, observable, shallow, shallowRef, toJS } from '@formvk/reactive'
+import { action, computed, reactive, shallow, shallowRef, toJS } from '@formvk/reactive'
 import { uid, isFn, each } from '@formvk/shared'
 
 import {
@@ -150,7 +150,7 @@ export class TreeNode {
 
   sourceName = ''
 
-  @observable accessor props: Required<ITreeNode>['props'] = {}
+  @reactive accessor props: Required<ITreeNode>['props'] = {}
 
   @shallow accessor children: TreeNode[] = []
 

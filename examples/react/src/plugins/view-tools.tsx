@@ -1,6 +1,6 @@
 import type { WorkbenchTypes } from '@formvk/designable-core'
 import { reportError } from '@formvk/designable-core'
-import { DESIGNER_SLOTS, useObserver, useText, useWorkbench } from '@formvk/designable-react'
+import { DESIGNER_SLOTS, observer, useText, useWorkbench } from '@formvk/designable-react'
 import type { IDesignerPlugin } from '@formvk/designable-react'
 import { Icon } from '@formvk/designable-react-icons'
 import { Segmented } from 'antd'
@@ -12,9 +12,9 @@ const VIEW_ICONS: Record<string, 'code' | 'preview' | 'outline' | 'node'> = {
   MARKUP: 'code',
 }
 
-const ViewTools = () => {
+const ViewTools = observer(() => {
   const workbench = useWorkbench()
-  const type = useObserver(() => workbench.type)
+  const type = workbench.type
   const t = useText()
 
   const labelOf = (value: WorkbenchTypes) => {
@@ -42,7 +42,7 @@ const ViewTools = () => {
       }}
     />
   )
-}
+})
 
 export const viewToolsPlugin: IDesignerPlugin = {
   name: 'demo.view-tools',

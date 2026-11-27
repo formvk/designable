@@ -44,6 +44,7 @@ export default defineConfig({
     nav: [
       { text: '指南', link: '/guide/getting-started' },
       { text: '核心模型', link: '/guide/core-models' },
+      { text: 'React 视图层', link: '/guide/react' },
       { text: '发布', link: '/guide/release' },
     ],
     sidebar: {
@@ -53,6 +54,7 @@ export default defineConfig({
           items: [
             { text: '快速开始', link: '/guide/getting-started' },
             { text: '核心模型', link: '/guide/core-models' },
+            { text: 'React 视图层', link: '/guide/react' },
             { text: '发布流程', link: '/guide/release' },
           ],
         },

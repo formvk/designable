@@ -3,7 +3,7 @@ import type { IDesignerComponents } from '@formvk/designable-react'
 import type { CSSProperties, ReactNode } from 'react'
 
 interface IDemoProps {
-  title?: ReactNode
+  title?: string
   style?: CSSProperties
   className?: string
   children?: ReactNode

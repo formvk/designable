@@ -52,3 +52,8 @@ pnpm check       # lint / format / test / build / docs 全量校验
 ```
 
 构建产物位于各包的 `dist/`，入口为 `dist/index.js`，类型为逐文件输出到 `dist/*.d.ts`。
+
+## 下一步
+
+- React 视图层：`@formvk/designable-react` 的组件、`observer` 响应式绑定、国际化、插件与插槽，见
+  [React 视图层](/guide/react)。
